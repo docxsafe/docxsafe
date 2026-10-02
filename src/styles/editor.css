@@ -1,0 +1,1884 @@
+/**
+ * DOCX Editor Styles
+ *
+ * Core styles for the WYSIWYG DOCX editor including:
+ * - Tailwind utility classes used by toolbar/UI components
+ * - CSS custom properties for theming (shadcn compatible)
+ * - Cursor/caret visibility
+ * - Selection highlighting
+ * - ContentEditable element styling
+ *
+ * NOTE: @tailwind utilities is required so that the built dist/styles.css
+ * includes all Tailwind utility classes used in the component JSX.
+ * Without this, consuming apps that import the library won't have
+ * the necessary button/toolbar styles unless they happen to generate
+ * the same classes in their own Tailwind build.
+ * We intentionally do NOT include @tailwind base (preflight) to avoid
+ * resetting styles in the consuming application.
+ */
+
+@tailwind utilities;
+
+/* ============================================================================
+ * CSS CUSTOM PROPERTIES (shadcn theme)
+ * ============================================================================ */
+
+/* Scoped to .ep-root to avoid clashing with host application CSS variables */
+.ep-root {
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 84% 4.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 84% 4.9%;
+  --primary: 221.2 83.2% 53.3%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 210 40% 96.1%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 221.2 83.2% 53.3%;
+  --radius: 0.5rem;
+
+  /* ========================================
+   * Document Editor Color System
+   * ======================================== */
+
+  /* Document background - area behind the page */
+  --doc-bg: #f8f9fa;
+
+  /* Primary action color (Google blue) */
+  --doc-primary: #1a73e8;
+  --doc-primary-hover: #1557b0;
+  --doc-primary-light: #e8f0fe; /* selected/active backgrounds */
+
+  /* Text colors */
+  --doc-text: #202124; /* primary text */
+  --doc-text-muted: #5f6368; /* secondary text */
+  --doc-text-subtle: #9aa0a6; /* tertiary/disabled text */
+  --doc-text-placeholder: #999; /* placeholder text */
+
+  /* Border colors */
+  --doc-border: #e0e0e0; /* standard borders */
+  --doc-border-light: #dadce0; /* lighter borders */
+  --doc-border-dark: #d0d0d0; /* darker borders (tables) */
+  --doc-border-input: #ccc; /* input borders */
+
+  /* Background colors */
+  --doc-bg-subtle: #f5f5f5; /* subtle backgrounds */
+  --doc-bg-hover: #f1f3f4; /* hover states */
+  --doc-bg-input: #f8f9fa; /* input backgrounds */
+
+  /* Status colors */
+  --doc-error: #c5221f; /* error states */
+  --doc-error-bg: #fce8e6; /* error backgrounds */
+  --doc-success: #34a853; /* success states */
+  --doc-success-bg: #e8f5e9; /* success backgrounds */
+  --doc-warning: #f9a825; /* warning states */
+  --doc-warning-bg: #fff8e1; /* warning backgrounds */
+
+  /* Link color */
+  --doc-link: #0563c1; /* hyperlinks */
+}
+
+/* ============================================================================
+ * CURSOR / CARET STYLING
+ * ============================================================================ */
+
+/* Base cursor styles for all editable elements */
+[contenteditable='true'] {
+  /* Black caret for light backgrounds - highly visible */
+  caret-color: #000;
+
+  /* Ensure cursor is always visible */
+  outline: none;
+
+  /* Smooth caret animation */
+  caret-shape: bar;
+}
+
+/* Editable runs - the main text editing elements */
+.docx-run-editable[contenteditable='true'] {
+  caret-color: #000;
+
+  /* Ensure minimum height for cursor visibility in empty runs */
+  min-height: 1em;
+
+  /* Display inline for text flow */
+  display: inline;
+}
+
+/* Empty paragraph cursor placeholder */
+.docx-paragraph-empty [contenteditable='true'] {
+  /* Ensure cursor is visible in empty paragraphs */
+  min-height: 1em;
+  min-width: 1px;
+  display: inline-block;
+}
+
+/* Editable paragraphs container */
+.docx-paragraph-editable {
+  /* Allow cursor placement anywhere in paragraph */
+  cursor: text;
+}
+
+/* ============================================================================
+ * FOCUS STATES
+ * ============================================================================ */
+
+/* Subtle focus indicator without disrupting layout */
+.docx-run-editable[contenteditable='true']:focus {
+  outline: none;
+  /* Optional: very subtle indicator - uncomment if needed */
+  /* box-shadow: 0 0 0 1px rgba(26, 115, 232, 0.2); */
+}
+
+/* Focus within paragraph */
+.docx-paragraph-editable:focus-within {
+  /* No visible border to maintain WYSIWYG fidelity */
+  outline: none;
+}
+
+/* ============================================================================
+ * SELECTION HIGHLIGHTING
+ * ============================================================================ */
+
+/*
+ * Selection highlighting CSS ensures consistent visual feedback when selecting
+ * text across multiple runs (spans) with different formatting.
+ *
+ * Key considerations:
+ * - Use !important to override inline styles from formatting
+ * - Ensure selection is visible against various backgrounds
+ * - Maintain text color (inherit) for readability
+ * - Use rgba for semi-transparent highlight that shows text clearly
+ */
+
+/* Base selection styling for all editable elements */
+.docx-run-editable::selection,
+.docx-run-editable *::selection,
+.docx-run::selection,
+.docx-run *::selection,
+[contenteditable='true']::selection,
+[contenteditable='true'] *::selection {
+  background-color: rgba(26, 115, 232, 0.3) !important;
+  color: inherit !important;
+}
+
+/* Firefox selection */
+.docx-run-editable::-moz-selection,
+.docx-run-editable *::-moz-selection,
+.docx-run::-moz-selection,
+.docx-run *::-moz-selection,
+[contenteditable='true']::-moz-selection,
+[contenteditable='true'] *::-moz-selection {
+  background-color: rgba(26, 115, 232, 0.3) !important;
+  color: inherit !important;
+}
+
+/* Selection in paragraphs - ensure runs within get consistent styling */
+.docx-paragraph::selection,
+.docx-paragraph *::selection,
+.docx-paragraph-editable::selection,
+.docx-paragraph-editable *::selection {
+  background-color: rgba(26, 115, 232, 0.3) !important;
+  color: inherit !important;
+}
+
+.docx-paragraph::-moz-selection,
+.docx-paragraph *::-moz-selection,
+.docx-paragraph-editable::-moz-selection,
+.docx-paragraph-editable *::-moz-selection {
+  background-color: rgba(26, 115, 232, 0.3) !important;
+  color: inherit !important;
+}
+
+/* Selection in hyperlinks */
+.docx-hyperlink::selection,
+.docx-hyperlink *::selection {
+  background-color: rgba(26, 115, 232, 0.3) !important;
+  color: inherit !important;
+}
+
+.docx-hyperlink::-moz-selection,
+.docx-hyperlink *::-moz-selection {
+  background-color: rgba(26, 115, 232, 0.3) !important;
+  color: inherit !important;
+}
+
+/* Selection on highlighted text - use darker selection for visibility */
+.docx-run-highlighted::selection,
+.docx-run-highlighted *::selection {
+  background-color: rgba(26, 115, 232, 0.5) !important;
+  color: inherit !important;
+}
+
+.docx-run-highlighted::-moz-selection,
+.docx-run-highlighted *::-moz-selection {
+  background-color: rgba(26, 115, 232, 0.5) !important;
+  color: inherit !important;
+}
+
+/* Selection on dark background text - lighter selection */
+.docx-run-dark-bg::selection,
+.docx-run-dark-bg *::selection {
+  background-color: rgba(100, 181, 246, 0.5) !important;
+  color: inherit !important;
+}
+
+.docx-run-dark-bg::-moz-selection,
+.docx-run-dark-bg *::-moz-selection {
+  background-color: rgba(100, 181, 246, 0.5) !important;
+  color: inherit !important;
+}
+
+/* Selection on bold text - ensure same style */
+.docx-run-bold::selection,
+.docx-run-bold *::selection {
+  background-color: rgba(26, 115, 232, 0.3) !important;
+  color: inherit !important;
+}
+
+.docx-run-bold::-moz-selection,
+.docx-run-bold *::-moz-selection {
+  background-color: rgba(26, 115, 232, 0.3) !important;
+  color: inherit !important;
+}
+
+/* Selection on italic text - ensure same style */
+.docx-run-italic::selection,
+.docx-run-italic *::selection {
+  background-color: rgba(26, 115, 232, 0.3) !important;
+  color: inherit !important;
+}
+
+.docx-run-italic::-moz-selection,
+.docx-run-italic *::-moz-selection {
+  background-color: rgba(26, 115, 232, 0.3) !important;
+  color: inherit !important;
+}
+
+/* ============================================================================
+ * FIND & REPLACE HIGHLIGHTING
+ * ============================================================================ */
+
+/* Find/replace match highlighting */
+.docx-find-highlight {
+  background-color: rgba(255, 235, 59, 0.5) !important;
+  border-radius: 2px;
+}
+
+/* Current find/replace match */
+.docx-find-highlight-current {
+  background-color: rgba(255, 152, 0, 0.6) !important;
+  border-radius: 2px;
+  outline: 2px solid rgba(255, 152, 0, 0.8);
+}
+
+/* ============================================================================
+ * AI ACTION PREVIEW HIGHLIGHTING
+ * ============================================================================ */
+
+/* Text selected for AI action */
+.docx-ai-selection-preview {
+  background-color: rgba(156, 39, 176, 0.2);
+  border-bottom: 2px dashed rgba(156, 39, 176, 0.6);
+}
+
+/* ============================================================================
+ * SELECTION OVERLAY (for programmatic highlighting)
+ * ============================================================================ */
+
+/* Container for selection overlay rectangles */
+.docx-selection-overlay-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+}
+
+/* Individual selection overlay rectangle */
+.docx-selection-overlay-rect {
+  position: absolute;
+  background-color: rgba(26, 115, 232, 0.3);
+  pointer-events: none;
+  user-select: none;
+  mix-blend-mode: multiply;
+}
+
+/* Word-style New Comment icon at the right end of the page (clear of text) */
+.ep-selection-comment-btn {
+  position: absolute;
+  z-index: 12;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  background: #fff;
+  color: #185abd;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(15, 23, 42, 0.02);
+  cursor: pointer;
+  /* Only this control captures clicks; the overlay itself is pointer-events: none */
+  pointer-events: auto;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease,
+    box-shadow 0.12s ease,
+    transform 0.12s ease;
+}
+
+.ep-selection-comment-btn:hover {
+  background: #f3f8ff;
+  border-color: #185abd;
+  box-shadow: 0 2px 6px rgba(24, 90, 189, 0.18);
+}
+
+.ep-selection-comment-btn:active {
+  transform: translateY(1px);
+}
+
+.ep-selection-comment-btn:focus-visible {
+  outline: 2px solid #185abd;
+  outline-offset: 2px;
+}
+
+/* ============================================================================
+ * SPECIAL CONTENT TYPES
+ * ============================================================================ */
+
+/* Highlighted text - ensure caret is visible against yellow */
+.docx-run-highlighted[contenteditable='true'] {
+  caret-color: #333;
+}
+
+/* Dark background text - use white caret */
+.docx-run-dark-bg[contenteditable='true'] {
+  caret-color: #fff;
+}
+
+/* ============================================================================
+ * EDITOR CONTAINER
+ * ============================================================================ */
+
+/* Main editor container */
+.docx-editor {
+  /* Inherit cursor styling */
+  cursor: default;
+}
+
+/* Editor page area */
+.docx-editor-page {
+  cursor: text;
+}
+
+/* Non-editable elements within editor */
+.docx-list-marker,
+.docx-bookmark-start,
+.docx-bookmark-end,
+.docx-field,
+.docx-drawing-placeholder,
+.docx-shape-placeholder {
+  cursor: default;
+  user-select: none;
+}
+
+/* ============================================================================
+ * TEMPLATE VARIABLES
+ * ============================================================================ */
+
+/* Template variable highlighting - non-editable within run */
+.docx-run-has-variable [contenteditable='false'] {
+  cursor: default;
+  user-select: all;
+}
+
+/* ============================================================================
+ * LAYOUT TABLE COLUMN RESIZE
+ * ============================================================================ */
+
+/* ============================================================================
+ * TABLE CELL SELECTION (visible layout table cells)
+ * ============================================================================ */
+
+.layout-table-cell-selected {
+  outline: 2px solid rgba(66, 133, 244, 0.6);
+  outline-offset: -2px;
+  background-color: rgba(66, 133, 244, 0.12) !important;
+}
+
+/* ============================================================================
+ * LAYOUT TABLE COLUMN RESIZE
+ * ============================================================================ */
+
+.layout-table-resize-handle {
+  background-color: transparent;
+  transition: background-color 0.15s;
+}
+
+.layout-table-resize-handle:hover,
+.layout-table-resize-handle.dragging {
+  background-color: rgba(66, 133, 244, 0.6);
+}
+
+/* Row resize handles */
+.layout-table-row-resize-handle,
+.layout-table-edge-handle-bottom {
+  background-color: transparent;
+  transition: background-color 0.15s;
+}
+
+.layout-table-row-resize-handle:hover,
+.layout-table-row-resize-handle.dragging,
+.layout-table-edge-handle-bottom:hover,
+.layout-table-edge-handle-bottom.dragging {
+  background-color: rgba(66, 133, 244, 0.6);
+}
+
+/* Right edge handle */
+.layout-table-edge-handle-right {
+  background-color: transparent;
+  transition: background-color 0.15s;
+}
+
+.layout-table-edge-handle-right:hover,
+.layout-table-edge-handle-right.dragging {
+  background-color: rgba(66, 133, 244, 0.6);
+}
+
+/* ==========================================================================
+   Review markup — comments, suggestions (tracked changes), Word tags
+   ========================================================================== */
+
+.docx-comment-anchor {
+  background-color: rgba(255, 212, 0, 0.28);
+  border-bottom: 2px solid rgba(240, 180, 0, 0.75);
+  cursor: pointer;
+}
+
+.docx-revision-ins {
+  color: #1b5e20 !important;
+  text-decoration-line: underline !important;
+  text-decoration-color: #2e7d32 !important;
+}
+
+.docx-revision-del {
+  color: #b71c1c !important;
+  text-decoration-line: line-through !important;
+  text-decoration-color: #c62828 !important;
+}
+
+.docx-content-control {
+  background-color: rgba(25, 118, 210, 0.08);
+  box-shadow: inset 0 -1px 0 rgba(25, 118, 210, 0.55);
+}
+
+/* Word-style markup views (class on the editor content wrapper) */
+.docx-markup-simple .docx-comment-anchor,
+.docx-markup-none .docx-comment-anchor,
+.docx-markup-original .docx-comment-anchor {
+  background-color: transparent;
+  border-bottom-color: transparent;
+}
+
+.docx-markup-simple .docx-revision-ins,
+.docx-markup-none .docx-revision-ins {
+  color: inherit !important;
+  text-decoration-line: none !important;
+}
+
+.docx-markup-simple .docx-revision-del,
+.docx-markup-none .docx-revision-del,
+.docx-markup-original .docx-revision-ins {
+  display: none;
+}
+
+.docx-markup-original .docx-revision-del {
+  color: inherit !important;
+  text-decoration-line: none !important;
+}
+
+/* Change bars in the left margin next to changed lines (Word: grey in All Markup, red in Simple) */
+.docx-markup-all .layout-line:has(.docx-revision-ins, .docx-revision-del),
+.docx-markup-simple .layout-line:has(.docx-revision-ins, .docx-revision-del) {
+  position: relative;
+}
+
+.docx-markup-all .layout-line:has(.docx-revision-ins, .docx-revision-del)::before,
+.docx-markup-simple .layout-line:has(.docx-revision-ins, .docx-revision-del)::before {
+  content: '';
+  position: absolute;
+  left: -28px;
+  top: 0;
+  bottom: 0;
+  border-left: 1.5px solid #8a8a8a;
+}
+
+.docx-markup-simple .layout-line:has(.docx-revision-ins, .docx-revision-del)::before {
+  border-left-color: #c42b1c;
+}
+
+/* ==========================================================================
+   Word-style chrome — ribbon, status bar, comment balloons, backstage
+   ========================================================================== */
+
+.ep-root.docx-editor {
+  --ribbon-accent: #185abd;
+  --ribbon-accent-hover: #124a9c;
+  --ribbon-bg: #f3f3f3;
+  --ribbon-panel: #fafafa;
+  --ribbon-border: #e0e0e0;
+  --ribbon-text: #242424;
+  --ribbon-muted: #616161;
+  --ribbon-hover: #e8e8e8;
+  --ribbon-pressed: #dadada;
+  /* Light blue fill when a toggle (Bold/Italic/…) is on — icon uses accent color */
+  --ribbon-checked: #cce4f7;
+  --ribbon-canvas: #e9e9e9;
+  --ribbon-font: 'Segoe UI', 'Segoe UI Web (West European)', -apple-system, BlinkMacSystemFont,
+    system-ui, Roboto, 'Helvetica Neue', sans-serif;
+  position: relative;
+}
+
+.ep-root.docx-editor .paged-editor {
+  --doc-bg: var(--ribbon-canvas);
+}
+
+/* --- Ribbon -------------------------------------------------------------- */
+
+.ep-ribbon {
+  font-family: var(--ribbon-font);
+  color: var(--ribbon-text);
+  background: var(--ribbon-bg);
+  border-bottom: 1px solid var(--ribbon-border);
+  user-select: none;
+}
+
+.ep-ribbon button {
+  font-family: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.ep-ribbon button:disabled {
+  cursor: default;
+}
+
+.ep-ribbon :focus-visible,
+.ep-statusbar :focus-visible,
+.ep-balloons :focus-visible,
+.ep-backstage :focus-visible,
+.ep-dialog :focus-visible {
+  outline: 2px solid var(--ribbon-accent);
+  outline-offset: 1px;
+  border-radius: 3px;
+}
+
+.ep-ribbon__tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 36px;
+  padding: 0 8px;
+}
+
+.ep-ribbon__tablist {
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.ep-ribbon__tab,
+.ep-ribbon__file {
+  position: relative;
+  border: 0;
+  background: transparent;
+  padding: 0 10px;
+  font-size: 13px;
+  white-space: nowrap;
+  border-radius: 4px 4px 0 0;
+  transition: background-color 120ms ease-out;
+}
+
+.ep-ribbon__file {
+  height: 28px;
+  margin-right: 4px;
+  border-radius: 4px;
+  color: var(--ribbon-accent);
+  font-weight: 600;
+}
+
+.ep-ribbon__tab:hover,
+.ep-ribbon__file:hover {
+  background: var(--ribbon-hover);
+}
+
+.ep-ribbon__tab[aria-selected='true'] {
+  color: var(--ribbon-accent);
+  font-weight: 600;
+}
+
+.ep-ribbon__tab[aria-selected='true']::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 3px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--ribbon-accent);
+}
+
+.ep-ribbon__tab.is-contextual {
+  color: #0f6cbd;
+}
+
+.ep-ribbon__end {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  padding-left: 12px;
+}
+
+.ep-ribbon__comments,
+.ep-ribbon-mode > .ep-ribbon-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid #c7c7c7;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 13px;
+  transition: background-color 120ms ease-out;
+}
+
+.ep-ribbon__comments:hover,
+.ep-ribbon-mode > .ep-ribbon-btn:hover {
+  background: #f5f5f5;
+}
+
+.ep-ribbon__comments[aria-pressed='true'] {
+  background: var(--ribbon-checked);
+}
+
+.ep-ribbon-mode.is-suggesting > .ep-ribbon-btn {
+  color: #0e700e;
+  border-color: #9fd89f;
+  background: #f1faf1;
+}
+
+.ep-ribbon-mode.is-viewing > .ep-ribbon-btn {
+  color: #616161;
+}
+
+.ep-ribbon__count {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--ribbon-accent);
+  color: #fff;
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.ep-ribbon__collapse {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ep-ribbon__collapse:hover {
+  background: var(--ribbon-hover);
+}
+
+.ep-ribbon__panel {
+  background: var(--ribbon-panel);
+  border-top: 1px solid var(--ribbon-border);
+}
+
+.ep-ribbon-panel__groups {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  min-height: 92px;
+  padding: 4px 4px 0;
+  /* Visible so dropdowns (menus, font/style pickers) aren't clipped; groups wrap
+     onto another row on narrow screens instead of scrolling sideways */
+  overflow: visible;
+}
+
+/* Groups */
+.ep-ribbon-group {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  padding: 0 6px;
+  border-right: 1px solid #dcdcdc;
+  margin: 2px 0 4px;
+}
+
+.ep-ribbon-group:last-child {
+  border-right: 0;
+}
+
+.ep-ribbon-group__body {
+  display: flex;
+  align-items: flex-start;
+  gap: 2px;
+  flex: 1;
+}
+
+.ep-ribbon-group__label {
+  padding: 2px 0 1px;
+  font-size: 11px;
+  line-height: 14px;
+  color: var(--ribbon-muted);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.ep-ribbon-stack {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 2px;
+}
+
+.ep-ribbon-row {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  min-height: 30px;
+}
+
+.ep-ribbon-divider {
+  width: 1px;
+  height: 20px;
+  margin: 0 3px;
+  background: #dcdcdc;
+}
+
+/* Buttons */
+.ep-ribbon-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ribbon-text);
+  font-size: 12px;
+  line-height: 1.2;
+  transition: background-color 120ms ease-out, border-color 120ms ease-out;
+}
+
+.ep-ribbon-btn--small {
+  min-height: 26px;
+  min-width: 26px;
+  padding: 2px 5px;
+  justify-content: flex-start;
+}
+
+.ep-ribbon-btn--large {
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 3px;
+  min-width: 52px;
+  max-width: 76px;
+  height: 70px;
+  padding: 4px 4px 2px;
+  text-align: center;
+}
+
+.ep-ribbon-btn--large .ep-ribbon-btn__label {
+  white-space: normal;
+  line-height: 1.15;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.ep-ribbon-btn:hover:not(:disabled) {
+  background: var(--ribbon-hover);
+}
+
+.ep-ribbon-btn:active:not(:disabled) {
+  background: var(--ribbon-pressed);
+}
+
+.ep-ribbon-btn[data-checked],
+.ep-ribbon-btn[data-open] {
+  background: var(--ribbon-checked);
+  border-color: #a6c9e8;
+  color: var(--ribbon-accent);
+}
+
+.ep-ribbon-btn[data-checked] svg,
+.ep-ribbon-btn[data-open] svg {
+  color: var(--ribbon-accent);
+}
+
+.ep-ribbon-btn:disabled {
+  opacity: 0.4;
+}
+
+.ep-ribbon-btn--menu.ep-ribbon-btn--small {
+  gap: 4px;
+}
+
+.ep-ribbon-btn--large .ep-ribbon-btn__caret {
+  margin-top: -2px;
+}
+
+.ep-ribbon-btn__label {
+  white-space: nowrap;
+}
+
+/* Split buttons (Accept / Reject / Delete) */
+.ep-ribbon-menu-root {
+  position: relative;
+  display: inline-flex;
+}
+
+.ep-ribbon-split {
+  display: inline-flex;
+  border: 1px solid transparent;
+  border-radius: 4px;
+}
+
+.ep-ribbon-split:hover,
+.ep-ribbon-split[data-open] {
+  border-color: #d1d1d1;
+}
+
+.ep-ribbon-split--large {
+  flex-direction: column;
+}
+
+.ep-ribbon-split__main {
+  border: 0;
+}
+
+.ep-ribbon-split--large .ep-ribbon-split__main {
+  height: 52px;
+  border-radius: 4px 4px 0 0;
+}
+
+.ep-ribbon-split__arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  border-radius: 0 0 4px 4px;
+  min-height: 18px;
+  min-width: 18px;
+  transition: background-color 120ms ease-out;
+}
+
+.ep-ribbon-split--small .ep-ribbon-split__arrow {
+  border-radius: 0 4px 4px 0;
+}
+
+.ep-ribbon-split__arrow:hover:not(:disabled) {
+  background: var(--ribbon-hover);
+}
+
+.ep-ribbon-split__arrow:disabled {
+  opacity: 0.4;
+}
+
+/* Dropdown menus */
+.ep-ribbon-menu {
+  position: absolute;
+  top: calc(100% + 2px);
+  z-index: 70;
+  min-width: 200px;
+  max-width: 340px;
+  padding: 4px;
+  background: #fff;
+  border: 1px solid #d1d1d1;
+  border-radius: 6px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.14), 0 0 2px rgba(0, 0, 0, 0.12);
+  font-family: var(--ribbon-font);
+  color: var(--ribbon-text);
+}
+
+.ep-ribbon-menu--left {
+  left: 0;
+}
+
+.ep-ribbon-menu--right {
+  right: 0;
+}
+
+.ep-ribbon-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 32px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  text-align: left;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.ep-ribbon-menu__item:hover:not(:disabled),
+.ep-ribbon-menu__item:focus-visible {
+  background: #f0f0f0;
+}
+
+.ep-ribbon-menu__item:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.ep-ribbon-menu__item[aria-checked='true'] {
+  background: #ebf3fc;
+}
+
+.ep-ribbon-menu__icon {
+  display: inline-flex;
+  width: 24px;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ep-ribbon-menu__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ep-ribbon-menu__desc {
+  font-size: 11px;
+  color: var(--ribbon-muted);
+  white-space: normal;
+}
+
+.ep-ribbon-menu__check {
+  margin-left: auto;
+  color: var(--ribbon-accent);
+}
+
+.ep-ribbon-menu__sep {
+  height: 1px;
+  margin: 4px 0;
+  background: #e0e0e0;
+}
+
+.ep-ribbon-select > .ep-ribbon-btn {
+  min-width: 130px;
+}
+
+/* Checkboxes (View > Show) */
+.ep-ribbon-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+  padding: 0 4px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.ep-ribbon-check input {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--ribbon-accent);
+}
+
+.ep-ribbon-check[data-disabled] {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Insert > Table: existing grid picker shown as a large ribbon button */
+.ep-ribbon-table-picker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  height: 70px;
+  padding-top: 8px;
+  font-size: 12px;
+}
+
+.ep-ribbon-styles {
+  display: flex;
+  align-items: center;
+  height: 62px;
+}
+
+/* --- Status bar ----------------------------------------------------------- */
+
+.ep-statusbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 26px;
+  padding: 0 8px;
+  background: var(--ribbon-bg);
+  border-top: 1px solid var(--ribbon-border);
+  font-family: var(--ribbon-font);
+  font-size: 12px;
+  color: #424242;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.ep-statusbar__left,
+.ep-statusbar__right {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ep-statusbar__item {
+  padding: 0 8px;
+  white-space: nowrap;
+}
+
+.ep-statusbar__btn,
+.ep-statusbar__icon {
+  height: 22px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transition: background-color 120ms ease-out;
+}
+
+.ep-statusbar__btn:hover,
+.ep-statusbar__icon:hover:not(:disabled) {
+  background: var(--ribbon-hover);
+}
+
+.ep-statusbar__icon {
+  width: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ep-statusbar__icon[aria-pressed='true'] {
+  background: var(--ribbon-checked);
+}
+
+.ep-statusbar__icon:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.ep-statusbar__sep {
+  width: 1px;
+  height: 14px;
+  margin: 0 6px;
+  background: #c7c7c7;
+}
+
+.ep-statusbar__zoom {
+  width: 110px;
+  accent-color: #616161;
+}
+
+.ep-statusbar__percent {
+  min-width: 46px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 640px) {
+  .ep-statusbar__zoom,
+  .ep-statusbar [aria-label='Read Mode'],
+  .ep-statusbar [aria-label='Print Layout'] {
+    display: none;
+  }
+}
+
+/* --- Markup area & comment balloons ---------------------------------------- */
+
+/* Shift pages left to make room for comment balloons (Word's markup area) and
+   for plugin panels shown beside the page; both reserve space via variables */
+.ep-markup-area {
+  --markup-area-space: 300px;
+}
+
+.ep-root .paged-editor__pages,
+.ep-root .ep-ruler-row > * {
+  margin-right: calc(var(--plugin-panel-space, 0px) + var(--markup-area-space, 0px));
+}
+
+/* Ruler keeps the page's width (overflows like the page instead of shrinking) */
+.ep-root .ep-ruler-row > * {
+  flex-shrink: 0;
+}
+
+.ep-balloons {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  font-family: var(--ribbon-font);
+}
+
+.ep-balloon,
+.ep-balloon-icon {
+  pointer-events: auto;
+}
+
+.ep-balloon {
+  position: absolute;
+  padding: 10px 12px;
+  background: #fff;
+  border: 1px solid #d1d1d1;
+  border-radius: 6px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  color: var(--ribbon-text);
+  font-size: 13px;
+  cursor: pointer;
+  transition: top 160ms ease-out, box-shadow 160ms ease-out, border-color 160ms ease-out;
+}
+
+.ep-balloon.is-active {
+  border-color: var(--ribbon-accent);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.14);
+  cursor: default;
+  z-index: 2;
+}
+
+.ep-balloon.is-resolved {
+  background: #f7f7f7;
+}
+
+.ep-balloon__resolved {
+  margin: -2px 0 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #0e700e;
+}
+
+.ep-balloon__entry.is-reply {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #ededed;
+}
+
+.ep-balloon__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ep-balloon__meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.ep-balloon__author {
+  font-weight: 600;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ep-balloon__date {
+  font-size: 11px;
+  color: var(--ribbon-muted);
+}
+
+.ep-balloon__actions {
+  display: flex;
+  gap: 2px;
+}
+
+.ep-balloon__more {
+  position: relative;
+}
+
+.ep-balloon__action {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #424242;
+  cursor: pointer;
+}
+
+.ep-balloon__action:hover {
+  background: #f0f0f0;
+}
+
+.ep-balloon__text {
+  margin: 6px 0 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.45;
+}
+
+.ep-balloon__reply {
+  margin-top: 10px;
+}
+
+.ep-balloon__reply-btn {
+  width: 100%;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid #d1d1d1;
+  border-radius: 4px;
+  background: #fff;
+  color: var(--ribbon-muted);
+  font: inherit;
+  text-align: left;
+  cursor: text;
+}
+
+.ep-balloon__reply-btn:hover {
+  border-color: #b3b3b3;
+}
+
+.ep-balloon-icon {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #d1d1d1;
+  border-radius: 6px;
+  background: #fff;
+  color: #424242;
+  cursor: pointer;
+}
+
+.ep-balloon-icon:hover {
+  border-color: var(--ribbon-accent);
+  color: var(--ribbon-accent);
+}
+
+.ep-balloon-connector {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.ep-balloon-connector polyline {
+  fill: none;
+  stroke: var(--ribbon-accent);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+/* --- Backstage (File) ------------------------------------------------------ */
+
+.ep-backstage {
+  position: absolute;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  background: #fff;
+  font-family: var(--ribbon-font);
+  color: var(--ribbon-text);
+}
+
+.ep-backstage__nav {
+  display: flex;
+  flex-direction: column;
+  width: 200px;
+  flex-shrink: 0;
+  padding: 12px 0;
+  background: var(--ribbon-accent);
+  color: #fff;
+}
+
+.ep-backstage__back {
+  width: 40px;
+  height: 40px;
+  margin: 0 0 12px 12px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ep-backstage__back:hover,
+.ep-backstage__nav-item:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.ep-backstage__nav-item {
+  height: 40px;
+  padding: 0 24px;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ep-backstage__nav-item[aria-current='page'] {
+  background: rgba(255, 255, 255, 0.24);
+  font-weight: 600;
+}
+
+.ep-backstage :focus-visible {
+  outline-color: #fff;
+}
+
+.ep-backstage__content {
+  flex: 1;
+  overflow: auto;
+  padding: 32px 40px;
+}
+
+.ep-backstage__content :focus-visible {
+  outline-color: var(--ribbon-accent);
+}
+
+.ep-backstage__title {
+  margin: 0 0 16px;
+  font-size: 28px;
+  font-weight: 300;
+}
+
+.ep-backstage__doc {
+  margin: 0 0 20px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.ep-backstage__props {
+  display: grid;
+  grid-template-columns: 140px auto;
+  gap: 8px 16px;
+  margin: 0;
+  font-size: 13px;
+}
+
+.ep-backstage__props dt {
+  color: var(--ribbon-muted);
+}
+
+.ep-backstage__props dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.ep-backstage__note {
+  max-width: 460px;
+  margin: 16px 0 0;
+  font-size: 13px;
+  color: var(--ribbon-muted);
+  line-height: 1.5;
+}
+
+.ep-backstage__print {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 112px;
+  padding: 14px 8px 10px;
+  margin-bottom: 16px;
+  border: 1px solid #d1d1d1;
+  border-radius: 6px;
+  background: #fff;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.ep-backstage__print:hover,
+.ep-backstage__card:hover {
+  background: #f5f5f5;
+  border-color: #b3b3b3;
+}
+
+.ep-backstage__card {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  width: 100%;
+  max-width: 520px;
+  margin-bottom: 10px;
+  padding: 14px 16px;
+  border: 1px solid #d1d1d1;
+  border-radius: 6px;
+  background: #fff;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ep-backstage__card > span {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--ribbon-muted);
+}
+
+.ep-backstage__card strong {
+  color: var(--ribbon-text);
+  font-size: 14px;
+}
+
+@media (max-width: 640px) {
+  .ep-backstage {
+    flex-direction: column;
+  }
+
+  .ep-backstage__nav {
+    flex-direction: row;
+    width: auto;
+    overflow-x: auto;
+    padding: 6px;
+  }
+
+  .ep-backstage__back {
+    margin: 0 4px 0 0;
+  }
+
+  .ep-backstage__content {
+    padding: 20px 16px;
+  }
+}
+
+/* --- Dialogs ---------------------------------------------------------------- */
+
+.ep-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.ep-dialog {
+  width: 380px;
+  max-width: 100%;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.24);
+  font-family: var(--ribbon-font, 'Segoe UI', system-ui, sans-serif);
+  color: #242424;
+}
+
+.ep-dialog__title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 6px 20px;
+}
+
+.ep-dialog__title h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.ep-dialog__close {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #424242;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ep-dialog__close:hover {
+  background: #f0f0f0;
+}
+
+.ep-dialog__body {
+  padding: 8px 20px 4px;
+  font-size: 13px;
+}
+
+.ep-dialog__body label {
+  display: block;
+  margin-bottom: 12px;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.ep-dialog__body input[type='text'] {
+  display: block;
+  width: 100%;
+  height: 32px;
+  margin-top: 4px;
+  padding: 0 8px;
+  border: 1px solid #c7c7c7;
+  border-bottom-color: #616161;
+  border-radius: 4px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.ep-dialog__fieldset {
+  margin: 0;
+  padding: 8px 10px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+}
+
+.ep-dialog__fieldset legend {
+  padding: 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.ep-dialog__check {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 13px;
+  font-weight: 400;
+  color: #334155;
+  cursor: pointer;
+}
+
+.ep-dialog__check input[type='checkbox'] {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: #2563eb;
+}
+
+.ep-dialog__body input[type='text']:focus {
+  outline: none;
+  border-bottom: 2px solid #185abd;
+}
+
+.ep-dialog__stats {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px 24px;
+  margin: 0 0 8px;
+}
+
+.ep-dialog__stats dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.ep-dialog__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 16px 20px 18px;
+}
+
+.ep-dialog__btn {
+  min-width: 80px;
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid #d1d1d1;
+  border-radius: 4px;
+  background: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ep-dialog__btn:hover {
+  background: #f5f5f5;
+}
+
+.ep-dialog__btn.is-primary {
+  border-color: #185abd;
+  background: #185abd;
+  color: #fff;
+}
+
+.ep-dialog__btn.is-primary:hover {
+  background: #124a9c;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ep-ribbon *,
+  .ep-statusbar *,
+  .ep-balloon,
+  .ep-balloons * {
+    transition: none !important;
+  }
+}
+
+/* --- Simplified (thin) ribbon: one row of commands, like Word's Simplified Ribbon --- */
+
+.ep-ribbon--simplified .ep-ribbon-panel__groups {
+  min-height: 40px;
+  align-items: center;
+  padding: 4px 6px;
+  row-gap: 4px;
+}
+
+.ep-ribbon--simplified .ep-ribbon-group {
+  flex-direction: row;
+  align-items: center;
+  margin: 0;
+  padding: 0 6px;
+  border-right: 0;
+  position: relative;
+}
+
+.ep-ribbon--simplified .ep-ribbon-group + .ep-ribbon-group::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  height: 20px;
+  margin-top: -10px;
+  border-left: 1px solid #d6d6d6;
+}
+
+.ep-ribbon--simplified .ep-ribbon-group__label {
+  display: none;
+}
+
+.ep-ribbon--simplified .ep-ribbon-group__body,
+.ep-ribbon--simplified .ep-ribbon-stack,
+.ep-ribbon--simplified .ep-ribbon-row {
+  flex-direction: row;
+  align-items: center;
+  gap: 1px;
+  min-height: 0;
+}
+
+/* Large buttons become compact icon + label buttons */
+.ep-ribbon--simplified .ep-ribbon-btn--large {
+  flex-direction: row;
+  gap: 5px;
+  height: 30px;
+  min-width: 0;
+  max-width: none;
+  padding: 2px 6px;
+}
+
+.ep-ribbon--simplified .ep-ribbon-btn--large svg {
+  width: 20px;
+  height: 20px;
+}
+
+.ep-ribbon--simplified .ep-ribbon-btn--large .ep-ribbon-btn__label {
+  display: inline;
+  white-space: nowrap;
+}
+
+.ep-ribbon--simplified .ep-ribbon-btn--large .ep-ribbon-btn__caret {
+  margin: 0;
+}
+
+.ep-ribbon--simplified .ep-ribbon-split--large {
+  flex-direction: row;
+}
+
+.ep-ribbon--simplified .ep-ribbon-split--large .ep-ribbon-split__main {
+  height: 30px;
+  border-radius: 4px 0 0 4px;
+}
+
+.ep-ribbon--simplified .ep-ribbon-split--large .ep-ribbon-split__arrow {
+  min-height: 30px;
+  border-radius: 0 4px 4px 0;
+}
+
+.ep-ribbon--simplified .ep-ribbon-btn--small {
+  min-height: 30px;
+}
+
+.ep-ribbon--simplified .ep-ribbon-table-picker {
+  flex-direction: row;
+  height: auto;
+  padding: 0;
+  gap: 2px;
+}
+
+.ep-ribbon--simplified .ep-ribbon-styles {
+  height: auto;
+}
+
+.ep-ribbon--simplified .ep-ribbon-check {
+  min-height: 30px;
+}
+
+.ep-ribbon--simplified .ep-ribbon-divider {
+  height: 18px;
+}
+
+/* On narrower screens keep icons only so the row stays on one line longer */
+@media (max-width: 1400px) {
+  .ep-ribbon--simplified .ep-ribbon-btn--small .ep-ribbon-btn__label,
+  .ep-ribbon--simplified .ep-ribbon-table-picker > .ep-ribbon-btn__label {
+    display: none;
+  }
+}
+
+@media (max-width: 1100px) {
+  .ep-ribbon--simplified .ep-ribbon-btn--large .ep-ribbon-btn__label {
+    display: none;
+  }
+}
+
+.ep-ribbon__display > .ep-ribbon-btn {
+  width: 28px;
+  height: 28px;
+  justify-content: center;
+  padding: 0;
+}
+
+.ep-ribbon__display .ep-ribbon-btn__caret {
+  display: none;
+}
+
+.ep-backstage__tile {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.ep-backstage__tile:hover {
+  background: #f5f5f5;
+  border-color: #d1d1d1;
+}
+
+.ep-backstage__tile-page {
+  width: 120px;
+  height: 156px;
+  border: 1px solid #d1d1d1;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.ep-backstage__unsaved {
+  font-weight: 400;
+  color: var(--ribbon-muted);
+}
+
+/* --- Docxtemplater {tags} drawn as chips -----------------------------------
+   The braces stay in the text (so layout, caret and editing are unchanged) but
+   are drawn transparent and act as the chip's padding. */
+
+.docx-template-tag {
+  --chip-bg: #fff4dc;
+  --chip-border: #f2c46b;
+  --chip-text: #8a5300;
+  background-color: var(--chip-bg) !important;
+  color: var(--chip-text) !important;
+  box-shadow: inset 0 1px 0 var(--chip-border), inset 0 -1px 0 var(--chip-border);
+  text-decoration: none !important;
+}
+
+.docx-template-tag.is-open,
+.docx-template-tag.is-close {
+  color: transparent !important;
+}
+
+.docx-template-tag.is-open {
+  border-radius: 4px 0 0 4px;
+  box-shadow: inset 1px 0 0 var(--chip-border), inset 0 1px 0 var(--chip-border),
+    inset 0 -1px 0 var(--chip-border);
+}
+
+.docx-template-tag.is-close {
+  border-radius: 0 4px 4px 0;
+  box-shadow: inset -1px 0 0 var(--chip-border), inset 0 1px 0 var(--chip-border),
+    inset 0 -1px 0 var(--chip-border);
+}
+
+.docx-template-tag--sectionStart,
+.docx-template-tag--sectionEnd {
+  --chip-bg: #e8f0fe;
+  --chip-border: #8ab4f8;
+  --chip-text: #1a4fb5;
+}
+
+.docx-template-tag--invertedStart {
+  --chip-bg: #f1eafe;
+  --chip-border: #b9a3f5;
+  --chip-text: #5b34c9;
+}
+
+.docx-template-tag--raw {
+  --chip-bg: #fdecea;
+  --chip-border: #f2a19b;
+  --chip-text: #b42318;
+}
+
+/* Final / print views show the plain text */
+.docx-markup-none .docx-template-tag,
+.docx-markup-original .docx-template-tag {
+  background-color: transparent !important;
+  box-shadow: none;
+  color: inherit !important;
+}
