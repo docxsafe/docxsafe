@@ -79,7 +79,8 @@ const overlayStyles: React.CSSProperties = {
   bottom: 0,
   pointerEvents: 'none',
   zIndex: 10,
-  overflow: 'hidden',
+  // visible so remote-caret initials (rendered at top: -16) are not clipped
+  overflow: 'visible',
 };
 
 const caretStyles = (
@@ -115,6 +116,7 @@ const remoteCaretWrapStyles = (caret: RemoteCaretMarker): React.CSSProperties =>
   top: caret.y,
   height: caret.height,
   width: 0,
+  overflow: 'visible',
   pointerEvents: 'none',
   zIndex: 12,
 });
@@ -265,12 +267,20 @@ if (typeof window !== 'undefined') {
     },
     true
   );
-  window.addEventListener('pointerup', () => {
-    selectionPointerDown = false;
-  }, true);
-  window.addEventListener('pointercancel', () => {
-    selectionPointerDown = false;
-  }, true);
+  window.addEventListener(
+    'pointerup',
+    () => {
+      selectionPointerDown = false;
+    },
+    true
+  );
+  window.addEventListener(
+    'pointercancel',
+    () => {
+      selectionPointerDown = false;
+    },
+    true
+  );
 }
 
 /**
@@ -325,43 +335,40 @@ const SelectionCommentButton: React.FC<{
   const [ready, setReady] = useState(false);
 
   // Never show while the user is still drag-selecting — the old near-text
-  // placement stole pointer events mid-gesture. Wait for pointerup; for
-  // keyboard / programmatic selections, reveal on the next frame.
+  // placement stole pointer events mid-gesture.
+  //
+  // Depend on hasRects (not rects identity): collab awareness used to rebuild
+  // selectionRect arrays every tick, which reset ready and hid this button.
+  const hasRects = rects.length > 0;
   useEffect(() => {
-    if (rects.length === 0) {
+    if (!hasRects) {
       setReady(false);
       return;
     }
 
-    let cancelled = false;
-    const reveal = () => {
-      if (!cancelled && !selectionPointerDown) setReady(true);
+    const hideWhileDragging = (e: PointerEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t?.closest?.('[data-testid="selection-comment-button"]')) return;
+      setReady(false);
+    };
+    const revealIfIdle = () => {
+      if (!selectionPointerDown) setReady(true);
     };
 
-    setReady(false);
+    // Programmatic / keyboard selection: show now (unless a drag is in flight)
+    revealIfIdle();
 
-    if (selectionPointerDown) {
-      const onUp = () => reveal();
-      window.addEventListener('pointerup', onUp, true);
-      window.addEventListener('pointercancel', onUp, true);
-      return () => {
-        cancelled = true;
-        window.removeEventListener('pointerup', onUp, true);
-        window.removeEventListener('pointercancel', onUp, true);
-      };
-    }
-
-    const raf = window.requestAnimationFrame(() => reveal());
+    window.addEventListener('pointerdown', hideWhileDragging, true);
+    window.addEventListener('pointerup', revealIfIdle, true);
+    window.addEventListener('pointercancel', revealIfIdle, true);
     return () => {
-      cancelled = true;
-      window.cancelAnimationFrame(raf);
+      window.removeEventListener('pointerdown', hideWhileDragging, true);
+      window.removeEventListener('pointerup', revealIfIdle, true);
+      window.removeEventListener('pointercancel', revealIfIdle, true);
     };
-  }, [rects]);
+  }, [hasRects]);
 
-  const anchor = useMemo(
-    () => computeCommentAnchor(rects, overlayEl),
-    [rects, overlayEl]
-  );
+  const anchor = useMemo(() => computeCommentAnchor(rects, overlayEl), [rects, overlayEl]);
 
   if (!ready || !anchor) return null;
 
@@ -430,8 +437,7 @@ export const SelectionOverlay: React.FC<SelectionOverlayProps> = ({
   // Determine if we have a range selection or collapsed selection
   const hasRangeSelection = selectionRects.length > 0;
   const hasCollapsedSelection = caretPosition !== null && !hasRangeSelection;
-  const showCommentButton =
-    hasRangeSelection && !!onNewComment && !hideCommentButton;
+  const showCommentButton = hasRangeSelection && !!onNewComment && !hideCommentButton;
 
   return (
     <div ref={setOverlayEl} style={overlayStyles} data-testid="selection-overlay">

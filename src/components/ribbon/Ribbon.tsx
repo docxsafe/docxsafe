@@ -1339,9 +1339,11 @@ export function Ribbon(props: RibbonProps) {
           <button
             type="button"
             className="ep-ribbon__comments"
-            aria-pressed={props.reviewingPaneOpen}
+            title={props.showComments ? 'Hide Comments' : 'Show Comments'}
+            aria-pressed={props.showComments}
+            aria-label={props.showComments ? 'Hide Comments' : 'Show Comments'}
             onMouseDown={(e) => e.preventDefault()}
-            onClick={() => props.onReviewingPaneChange(!props.reviewingPaneOpen)}
+            onClick={() => props.onShowCommentsChange(!props.showComments)}
             data-testid="ribbon-comments-button"
           >
             <RibbonIcon name="showComments" size={18} />

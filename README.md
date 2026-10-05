@@ -1,4 +1,4 @@
-# Decidendi Editor
+# DocXSafe Editor
 
 Open-source WYSIWYG DOCX editor for React. Open, review, edit, and save `.docx` files entirely in the browser — no server required.
 
@@ -14,15 +14,71 @@ Open-source WYSIWYG DOCX editor for React. Open, review, edit, and save `.docx` 
 ## Installation
 
 ```bash
-npm install decidendi-editor
+npm install docxsafe-editor
 ```
 
 ## Quick Start
 
 ```tsx
 import { useRef } from 'react';
-import { DocxEditor, type DocxEditorRef } from 'decidendi-editor';
-import 'decidendi-editor/styles.css';
+import { DocXSafeEditor, type DocXSafeEditorRef } from 'docxsafe-editor';
+import 'docxsafe-editor/styles.css';
+
+function App() {
+  const editorRef = useRef<DocXSafeEditorRef>(null);
+
+  return (
+    <div style={{ height: '100vh' }}>
+      <DocXSafeEditor
+        ref={editorRef}
+        source="/contracts/msa.docx" // File | Blob | ArrayBuffer | URL | omit for blank
+        author="Alice"
+        onSave={async (buffer) => {
+          await fetch('/api/documents/1', { method: 'PUT', body: buffer });
+        }}
+      />
+    </div>
+  );
+}
+```
+
+`DocXSafeEditor` is the drop-in component for host apps. It wraps the full Word-style UI (ribbon, comments, tags, print) and can optionally take a `collaboration` prop for real-time co-editing.
+
+For lower-level control, use `DocxEditor` directly (same package).
+
+> **Next.js / SSR:** The editor requires the DOM. Use a dynamic import with `ssr: false` (or load it inside `useEffect`) so it never runs on the server.
+
+### With collaboration
+
+```tsx
+<DocXSafeEditor
+  source={file}
+  author="Alice"
+  collaboration={{
+    roomId: 'acme-msa',
+    websocketUrl: 'ws://localhost:1234',
+    user: { name: 'Alice' },
+  }}
+/>
+```
+
+### Ref helpers
+
+```tsx
+const ref = useRef<DocXSafeEditorRef>(null);
+
+await ref.current?.save(); // ArrayBuffer of the .docx
+await ref.current?.download('signed.docx');
+ref.current?.print();
+ref.current?.focus();
+```
+
+## Advanced: `DocxEditor`
+
+```tsx
+import { useRef } from 'react';
+import { DocxEditor, type DocxEditorRef } from 'docxsafe-editor';
+import 'docxsafe-editor/styles.css';
 
 function Editor({ file }: { file: ArrayBuffer }) {
   const editorRef = useRef<DocxEditorRef>(null);
@@ -43,43 +99,28 @@ function Editor({ file }: { file: ArrayBuffer }) {
 }
 ```
 
-> **Next.js / SSR:** The editor requires the DOM. Use a dynamic import or lazy `useEffect` load to avoid server-side rendering issues.
+## Props (`DocXSafeEditor`)
 
-## Props
+| Prop            | Type                                                | Default           | Description                              |
+| --------------- | --------------------------------------------------- | ----------------- | ---------------------------------------- |
+| `source`        | `File \| Blob \| ArrayBuffer \| string \| Document` | —                 | Document to open (URL string is fetched) |
+| `author`        | `string`                                            | `'Anonymous'`     | Author for comments / track changes      |
+| `documentName`  | `string`                                            | `'Document.docx'` | Name shown in File > Info / downloads    |
+| `height`        | `string \| number`                                  | `'100%'`          | Outer shell height                       |
+| `readOnly`      | `boolean`                                           | `false`           | Read-only preview                        |
+| `collaboration` | `{ roomId, websocketUrl, user }`                    | —                 | Optional real-time co-editing            |
+| `onSave`        | `(buffer: ArrayBuffer) => void`                     | —                 | Called on save                           |
+| `onChange`      | `(doc: Document) => void`                           | —                 | Called on document change                |
+| `onError`       | `(error: Error) => void`                            | —                 | Called on error                          |
 
-| Prop                | Type                            | Default | Description                                 |
-| ------------------- | ------------------------------- | ------- | ------------------------------------------- |
-| `documentBuffer`    | `ArrayBuffer`                   | —       | `.docx` file contents to load               |
-| `document`          | `Document`                      | —       | Pre-parsed document (alternative to buffer) |
-| `readOnly`          | `boolean`                       | `false` | Read-only preview (no caret/selection)      |
-| `showToolbar`       | `boolean`                       | `true`  | Show formatting toolbar                     |
-| `showRuler`         | `boolean`                       | `false` | Show horizontal ruler                       |
-| `showZoomControl`   | `boolean`                       | `true`  | Show zoom controls                          |
-| `showVariablePanel` | `boolean`                       | `true`  | Show template variable panel                |
-| `initialZoom`       | `number`                        | `1.0`   | Initial zoom level                          |
-| `onChange`          | `(doc: Document) => void`       | —       | Called on document change                   |
-| `onSave`            | `(buffer: ArrayBuffer) => void` | —       | Called on save                              |
-| `onError`           | `(error: Error) => void`        | —       | Called on error                             |
-
-## Ref Methods
-
-```tsx
-const ref = useRef<DocxEditorRef>(null);
-
-await ref.current.save(); // Returns ArrayBuffer of the .docx
-ref.current.getDocument(); // Current document object
-ref.current.setZoom(1.5); // Set zoom to 150%
-ref.current.focus(); // Focus the editor
-ref.current.scrollToPage(3); // Scroll to page 3
-ref.current.print(); // Print the document
-```
+All other `DocxEditor` props (zoom, modes, rulers, …) are also accepted.
 
 ## Read-Only Preview
 
 Use `readOnly` for a preview-only viewer. This disables editing, caret, and selection UI.
 
 ```tsx
-<DocxEditor documentBuffer={file} readOnly />
+<DocXSafeEditor source={file} readOnly />
 ```
 
 ## Plugins
@@ -87,7 +128,7 @@ Use `readOnly` for a preview-only viewer. This disables editing, caret, and sele
 Extend the editor with the plugin system. Wrap `DocxEditor` in a `PluginHost` and pass plugins that can contribute ProseMirror plugins, side panels, document overlays, and custom CSS:
 
 ```tsx
-import { DocxEditor, PluginHost, templatePlugin } from 'decidendi-editor';
+import { DocxEditor, PluginHost, templatePlugin } from 'docxsafe-editor';
 
 function Editor({ file }: { file: ArrayBuffer }) {
   return (

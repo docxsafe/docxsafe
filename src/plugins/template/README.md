@@ -12,8 +12,8 @@ Adds [docxtemplater](https://docxtemplater.com) syntax support to the DOCX edito
 ## Usage
 
 ```tsx
-import { DocxEditor, PluginHost, templatePlugin } from 'decidendi-editor';
-import 'decidendi-editor/styles.css';
+import { DocxEditor, PluginHost, templatePlugin } from 'docxsafe-editor';
+import 'docxsafe-editor/styles.css';
 
 function Editor({ file }: { file: ArrayBuffer }) {
   return (
@@ -29,8 +29,8 @@ function Editor({ file }: { file: ArrayBuffer }) {
 Use `createTemplatePlugin` for more control:
 
 ```tsx
-import { DocxEditor, PluginHost } from 'decidendi-editor';
-import { createPlugin } from 'decidendi-editor';
+import { DocxEditor, PluginHost } from 'docxsafe-editor';
+import { createPlugin } from 'docxsafe-editor';
 
 const myTemplatePlugin = createPlugin({
   panelPosition: 'left', // 'left' | 'right' (default: 'right')
@@ -52,7 +52,7 @@ function Editor({ file }: { file: ArrayBuffer }) {
 To fill a template with data (outside the editor):
 
 ```tsx
-import { processTemplate } from 'decidendi-editor';
+import { processTemplate } from 'docxsafe-editor';
 
 const filled = await processTemplate(docxBuffer, {
   name: 'Jane Doe',

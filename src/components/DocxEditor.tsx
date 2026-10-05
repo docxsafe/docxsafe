@@ -70,10 +70,7 @@ import { HyperlinkDialog, useHyperlinkDialog, type HyperlinkData } from './dialo
 import { TablePropertiesDialog } from './dialogs/TablePropertiesDialog';
 import { ImagePositionDialog, type ImagePositionData } from './dialogs/ImagePositionDialog';
 import { ImagePropertiesDialog, type ImagePropertiesData } from './dialogs/ImagePropertiesDialog';
-import {
-  HeaderFooterEditor,
-  insertPageNumberInView,
-} from './HeaderFooterEditor';
+import { HeaderFooterEditor, insertPageNumberInView } from './HeaderFooterEditor';
 import type { EditorView as PMEditorView } from 'prosemirror-view';
 import { undo as pmUndo, redo as pmRedo } from 'prosemirror-history';
 import type { DocxCollaborationConfig } from '../collaboration';
@@ -209,7 +206,7 @@ export interface DocxEditorProps {
   /**
    * Real-time co-editing via Yjs + y-webrtc.
    * Create a session with `useCollaboration` / `createCollaborationSession`
-   * from `decidendi-editor/collaboration`, then pass it here.
+   * from `docxsafe-editor/collaboration`, then pass it here.
    */
   collaboration?: DocxCollaborationConfig | null;
   /** Callback when editor view is ready (for PluginHost) */
@@ -591,6 +588,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     defaultMode,
     onModeChange,
     defaultSidebarOpen: defaultReviewSidebarOpen,
+    collaborationSession: activeCollabSession,
   });
   // Viewing mode is read-only; the readOnly prop locks the editor into it
   const readOnly = readOnlyProp || review.mode === 'viewing';
@@ -727,14 +725,15 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     }
   }, [initialDocument, documentBuffer]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Create/update agent when document changes
+  // Create/update agent when document or live comments change so toBuffer()
+  // includes word/comments.xml (OOXML) matching the open balloons.
   useEffect(() => {
     if (history.state) {
-      agentRef.current = new DocumentAgent(history.state);
+      agentRef.current = new DocumentAgent(review.withComments(history.state));
     } else {
       agentRef.current = null;
     }
-  }, [history.state]);
+  }, [history.state, review.withComments]);
 
   // Listen for font loading
   useEffect(() => {
@@ -747,10 +746,13 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // Handle document change
   const handleDocumentChange = useCallback(
     (newDocument: Document) => {
-      history.push(newDocument);
-      onChange?.(newDocument);
+      // Keep word/comments.xml payload on the Document model so OOXML export
+      // (and any consumer of onChange) sees the same Comment[] as the balloons.
+      const next = review.withComments(newDocument);
+      history.push(next);
+      onChange?.(next);
     },
-    [onChange, history]
+    [onChange, history, review.withComments]
   );
 
   // Handle selection changes from ProseMirror
@@ -1471,147 +1473,150 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   );
 
   // Handle formatting action from toolbar (body or header/footer view)
-  const handleFormat = useCallback((action: FormattingAction) => {
-    const view = getActiveEditorView();
-    if (!view) return;
+  const handleFormat = useCallback(
+    (action: FormattingAction) => {
+      const view = getActiveEditorView();
+      if (!view) return;
 
-    // Focus editor first to ensure we can dispatch commands
-    view.focus();
+      // Focus editor first to ensure we can dispatch commands
+      view.focus();
 
-    // Restore selection if it was lost during toolbar interaction
-    // This happens when user clicks on dropdown menus (font picker, style picker, etc.)
-    const { from, to } = view.state.selection;
-    const isEmptySelection = from === to;
-    const savedSelection = lastSelectionRef.current;
+      // Restore selection if it was lost during toolbar interaction
+      // This happens when user clicks on dropdown menus (font picker, style picker, etc.)
+      const { from, to } = view.state.selection;
+      const isEmptySelection = from === to;
+      const savedSelection = lastSelectionRef.current;
 
-    if (isEmptySelection && savedSelection && savedSelection.from !== savedSelection.to) {
-      // Selection was lost - restore it before applying the format
-      try {
-        const tr = view.state.tr.setSelection(
-          TextSelection.create(view.state.doc, savedSelection.from, savedSelection.to)
-        );
-        view.dispatch(tr);
-      } catch (e) {
-        // If restoration fails (e.g., positions are invalid after doc change), continue with current selection
-        console.warn('Could not restore selection:', e);
-      }
-    }
-
-    // Handle simple toggle actions
-    if (action === 'bold') {
-      toggleBold(view.state, view.dispatch);
-      return;
-    }
-    if (action === 'italic') {
-      toggleItalic(view.state, view.dispatch);
-      return;
-    }
-    if (action === 'underline') {
-      toggleUnderline(view.state, view.dispatch);
-      return;
-    }
-    if (action === 'strikethrough') {
-      toggleStrike(view.state, view.dispatch);
-      return;
-    }
-    if (action === 'superscript') {
-      toggleSuperscript(view.state, view.dispatch);
-      return;
-    }
-    if (action === 'subscript') {
-      toggleSubscript(view.state, view.dispatch);
-      return;
-    }
-    if (action === 'bulletList') {
-      toggleBulletList(view.state, view.dispatch);
-      return;
-    }
-    if (action === 'numberedList') {
-      toggleNumberedList(view.state, view.dispatch);
-      return;
-    }
-    if (action === 'indent') {
-      // Try list indent first, then paragraph indent
-      if (!increaseListLevel(view.state, view.dispatch)) {
-        increaseIndent()(view.state, view.dispatch);
-      }
-      return;
-    }
-    if (action === 'outdent') {
-      // Try list outdent first, then paragraph outdent
-      if (!decreaseListLevel(view.state, view.dispatch)) {
-        decreaseIndent()(view.state, view.dispatch);
-      }
-      return;
-    }
-    if (action === 'clearFormatting') {
-      clearFormatting(view.state, view.dispatch);
-      return;
-    }
-    if (action === 'insertLink') {
-      // Get the selected text for the hyperlink dialog
-      const selectedText = getSelectedText(view.state);
-      // Check if we're editing an existing link
-      const existingLink = getHyperlinkAttrs(view.state);
-      if (existingLink) {
-        hyperlinkDialog.openEdit({
-          url: existingLink.href,
-          displayText: selectedText,
-          tooltip: existingLink.tooltip,
-        });
-      } else {
-        hyperlinkDialog.openInsert(selectedText);
-      }
-      return;
-    }
-
-    // Handle object-based actions
-    if (typeof action === 'object') {
-      switch (action.type) {
-        case 'alignment':
-          setAlignment(action.value)(view.state, view.dispatch);
-          break;
-        case 'textColor':
-          // action.value can be a string like "#FF0000" or a color name
-          setTextColor({ rgb: action.value.replace('#', '') })(view.state, view.dispatch);
-          break;
-        case 'highlightColor': {
-          // Convert hex to OOXML named highlight value (e.g., 'FFFF00' → 'yellow')
-          const highlightName = action.value ? mapHexToHighlightName(action.value) : '';
-          setHighlight(highlightName || action.value)(view.state, view.dispatch);
-          break;
+      if (isEmptySelection && savedSelection && savedSelection.from !== savedSelection.to) {
+        // Selection was lost - restore it before applying the format
+        try {
+          const tr = view.state.tr.setSelection(
+            TextSelection.create(view.state.doc, savedSelection.from, savedSelection.to)
+          );
+          view.dispatch(tr);
+        } catch (e) {
+          // If restoration fails (e.g., positions are invalid after doc change), continue with current selection
+          console.warn('Could not restore selection:', e);
         }
-        case 'fontSize':
-          // Convert points to half-points (OOXML uses half-points for font sizes)
-          setFontSize(pointsToHalfPoints(action.value))(view.state, view.dispatch);
-          break;
-        case 'fontFamily':
-          setFontFamily(action.value)(view.state, view.dispatch);
-          break;
-        case 'lineSpacing':
-          setLineSpacing(action.value)(view.state, view.dispatch);
-          break;
-        case 'applyStyle': {
-          // Resolve style to get its formatting properties
-          const styleResolver = history.state?.package.styles
-            ? createStyleResolver(history.state.package.styles)
-            : null;
+      }
 
-          if (styleResolver) {
-            const resolved = styleResolver.resolveParagraphStyle(action.value);
-            applyStyle(action.value, {
-              paragraphFormatting: resolved.paragraphFormatting,
-              runFormatting: resolved.runFormatting,
-            })(view.state, view.dispatch);
-          } else {
-            // No styles available, just set the styleId
-            applyStyle(action.value)(view.state, view.dispatch);
+      // Handle simple toggle actions
+      if (action === 'bold') {
+        toggleBold(view.state, view.dispatch);
+        return;
+      }
+      if (action === 'italic') {
+        toggleItalic(view.state, view.dispatch);
+        return;
+      }
+      if (action === 'underline') {
+        toggleUnderline(view.state, view.dispatch);
+        return;
+      }
+      if (action === 'strikethrough') {
+        toggleStrike(view.state, view.dispatch);
+        return;
+      }
+      if (action === 'superscript') {
+        toggleSuperscript(view.state, view.dispatch);
+        return;
+      }
+      if (action === 'subscript') {
+        toggleSubscript(view.state, view.dispatch);
+        return;
+      }
+      if (action === 'bulletList') {
+        toggleBulletList(view.state, view.dispatch);
+        return;
+      }
+      if (action === 'numberedList') {
+        toggleNumberedList(view.state, view.dispatch);
+        return;
+      }
+      if (action === 'indent') {
+        // Try list indent first, then paragraph indent
+        if (!increaseListLevel(view.state, view.dispatch)) {
+          increaseIndent()(view.state, view.dispatch);
+        }
+        return;
+      }
+      if (action === 'outdent') {
+        // Try list outdent first, then paragraph outdent
+        if (!decreaseListLevel(view.state, view.dispatch)) {
+          decreaseIndent()(view.state, view.dispatch);
+        }
+        return;
+      }
+      if (action === 'clearFormatting') {
+        clearFormatting(view.state, view.dispatch);
+        return;
+      }
+      if (action === 'insertLink') {
+        // Get the selected text for the hyperlink dialog
+        const selectedText = getSelectedText(view.state);
+        // Check if we're editing an existing link
+        const existingLink = getHyperlinkAttrs(view.state);
+        if (existingLink) {
+          hyperlinkDialog.openEdit({
+            url: existingLink.href,
+            displayText: selectedText,
+            tooltip: existingLink.tooltip,
+          });
+        } else {
+          hyperlinkDialog.openInsert(selectedText);
+        }
+        return;
+      }
+
+      // Handle object-based actions
+      if (typeof action === 'object') {
+        switch (action.type) {
+          case 'alignment':
+            setAlignment(action.value)(view.state, view.dispatch);
+            break;
+          case 'textColor':
+            // action.value can be a string like "#FF0000" or a color name
+            setTextColor({ rgb: action.value.replace('#', '') })(view.state, view.dispatch);
+            break;
+          case 'highlightColor': {
+            // Convert hex to OOXML named highlight value (e.g., 'FFFF00' → 'yellow')
+            const highlightName = action.value ? mapHexToHighlightName(action.value) : '';
+            setHighlight(highlightName || action.value)(view.state, view.dispatch);
+            break;
           }
-          break;
+          case 'fontSize':
+            // Convert points to half-points (OOXML uses half-points for font sizes)
+            setFontSize(pointsToHalfPoints(action.value))(view.state, view.dispatch);
+            break;
+          case 'fontFamily':
+            setFontFamily(action.value)(view.state, view.dispatch);
+            break;
+          case 'lineSpacing':
+            setLineSpacing(action.value)(view.state, view.dispatch);
+            break;
+          case 'applyStyle': {
+            // Resolve style to get its formatting properties
+            const styleResolver = history.state?.package.styles
+              ? createStyleResolver(history.state.package.styles)
+              : null;
+
+            if (styleResolver) {
+              const resolved = styleResolver.resolveParagraphStyle(action.value);
+              applyStyle(action.value, {
+                paragraphFormatting: resolved.paragraphFormatting,
+                runFormatting: resolved.runFormatting,
+              })(view.state, view.dispatch);
+            } else {
+              // No styles available, just set the styleId
+              applyStyle(action.value)(view.state, view.dispatch);
+            }
+            break;
+          }
         }
       }
-    }
-  }, [getActiveEditorView]);
+    },
+    [getActiveEditorView]
+  );
 
   // Handle variable values change
   const handleVariableValuesChange = useCallback((values: Record<string, string>) => {
@@ -1787,13 +1792,31 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         }
       }
 
-      // Clone pages and remove transforms/shadows
+      // Clone pages and strip editor-only chrome (HF zone labels, shadows)
       const pagesClone = pagesEl.cloneNode(true) as HTMLElement;
       pagesClone.style.cssText = 'display: block; margin: 0; padding: 0;';
       for (const page of Array.from(pagesClone.querySelectorAll('.layout-page'))) {
         const el = page as HTMLElement;
         el.style.boxShadow = 'none';
         el.style.margin = '0';
+      }
+      // "Header" / "Footer" labels are editor hover UI — never print them
+      for (const label of Array.from(pagesClone.querySelectorAll('.layout-hf-label'))) {
+        label.remove();
+      }
+      // Empty HF hit-zones have no content; drop them so they don't reserve space
+      for (const empty of Array.from(
+        pagesClone.querySelectorAll('.layout-page-header.is-empty, .layout-page-footer.is-empty')
+      )) {
+        empty.remove();
+      }
+      // Clear editor selection / caret overlays from the print copy
+      for (const chrome of Array.from(
+        pagesClone.querySelectorAll(
+          '.selection-overlay, .remote-caret, .paged-editor__comment-btn, .ep-balloons'
+        )
+      )) {
+        chrome.remove();
       }
 
       // Tracked changes print as shown on screen: with markup, or as the final text
@@ -1812,8 +1835,18 @@ ${fontFaceRules.join('\n')}
 ${reviewCss}
 * { margin: 0; padding: 0; }
 body { background: white; }
-.layout-page { break-after: page; }
+.layout-page { break-after: page; position: relative; }
 .layout-page:last-child { break-after: auto; }
+.layout-hf-label,
+.selection-overlay,
+.remote-caret { display: none !important; }
+.layout-page-header,
+.layout-page-footer {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  cursor: default !important;
+}
 @page { margin: 0; size: auto; }
 </style>
 </head><body>${pagesClone.outerHTML}</body></html>`);
@@ -2183,7 +2216,7 @@ body { background: white; }
     ref,
     () => ({
       getAgent: () => agentRef.current,
-      getDocument: () => history.state,
+      getDocument: () => (history.state ? withComments(history.state) : null),
       getEditorRef: () => pagedEditorRef.current,
       save: handleSave,
       setZoom: (zoom: number) => setState((prev) => ({ ...prev, zoom })),
@@ -2203,6 +2236,7 @@ body { background: white; }
     }),
     [
       history.state,
+      withComments,
       state.zoom,
       state.currentPage,
       state.totalPages,
@@ -2552,7 +2586,13 @@ body { background: white; }
               onNextComment={() => review.goToComment(1)}
               commentCount={review.openCommentCount}
               showComments={review.showComments}
-              onShowCommentsChange={review.setShowComments}
+              onShowCommentsChange={(show) => {
+                review.setShowComments(show);
+                // Balloons need Simple/All Markup — match Word Show Comments
+                if (show) {
+                  review.setMarkupView((v) => (v === 'none' || v === 'original' ? 'all' : v));
+                }
+              }}
               markupView={review.markupView}
               onMarkupViewChange={review.setMarkupView}
               reviewingPaneOpen={review.sidebar.open}
@@ -2673,8 +2713,11 @@ body { background: white; }
                       handleSelectionChange(null);
                     }
                   }}
-                  onNewComment={readOnly || review.mode === 'viewing' ? undefined : handleNewComment}
+                  onNewComment={
+                    readOnly || review.mode === 'viewing' ? undefined : handleNewComment
+                  }
                   hideSelectionCommentButton={!!review.draft || review.mode === 'viewing'}
+                  pinnedSelectionRange={review.draft}
                   externalPlugins={externalPlugins}
                   onReady={(ref) => {
                     review.syncFromView(ref.getView());

@@ -6,6 +6,7 @@
 import { Plugin, TextSelection, type EditorState, type Transaction } from 'prosemirror-state';
 import type { Node as PMNode } from 'prosemirror-model';
 import type { EditorView } from 'prosemirror-view';
+import { normalizeContentControlTagAttrs } from '../../types/content';
 import { SUGGESTION_SKIP_META } from '../plugins/suggestionMode';
 
 // ============================================================================
@@ -67,9 +68,7 @@ export function getRevisions(doc: PMNode): RevisionInfo[] {
 
   doc.descendants((node, pos) => {
     if (!node.isInline) return true;
-    const mark = node.marks.find(
-      (m) => m.type.name === 'insertion' || m.type.name === 'deletion'
-    );
+    const mark = node.marks.find((m) => m.type.name === 'insertion' || m.type.name === 'deletion');
     if (!mark) {
       current = null;
       return false;
@@ -155,12 +154,18 @@ export function rejectRevision(view: EditorView, key: string): boolean {
 
 /** Accept every tracked change in the document */
 export function acceptAllRevisions(view: EditorView): boolean {
-  return dispatchIf(view, resolveRevisions(view.state, true, () => true));
+  return dispatchIf(
+    view,
+    resolveRevisions(view.state, true, () => true)
+  );
 }
 
 /** Reject every tracked change in the document */
 export function rejectAllRevisions(view: EditorView): boolean {
-  return dispatchIf(view, resolveRevisions(view.state, false, () => true));
+  return dispatchIf(
+    view,
+    resolveRevisions(view.state, false, () => true)
+  );
 }
 
 /** Tracked changes overlapping the selection (or touching a collapsed cursor) */
@@ -170,10 +175,7 @@ export function getRevisionsAtSelection(state: EditorState): RevisionInfo[] {
 }
 
 /** Next/previous tracked change relative to the selection, wrapping around */
-export function findAdjacentRevision(
-  state: EditorState,
-  direction: 1 | -1
-): RevisionInfo | null {
+export function findAdjacentRevision(state: EditorState, direction: 1 | -1): RevisionInfo | null {
   const revisions = getRevisions(state.doc);
   if (revisions.length === 0) return null;
   const { from, to } = state.selection;
@@ -378,8 +380,32 @@ export function getContentControls(doc: PMNode): ContentControlInfo[] {
 }
 
 /**
+ * If `pos` is inside an inline SDT, return the content range (excluding the
+ * wrapper node itself) so double-click can select the whole tag body.
+ */
+export function findSdtContentRangeAt(
+  doc: PMNode,
+  pos: number
+): { from: number; to: number } | null {
+  if (pos < 0 || pos > doc.content.size) return null;
+  const $pos = doc.resolve(Math.min(pos, doc.content.size));
+  for (let d = $pos.depth; d > 0; d--) {
+    if ($pos.node(d).type.name === 'sdt') {
+      const start = $pos.before(d);
+      const node = $pos.node(d);
+      const from = start + 1;
+      const to = start + node.nodeSize - 1;
+      if (from <= to) return { from, to };
+      return { from, to: from };
+    }
+  }
+  return null;
+}
+
+/**
  * Wrap the selection in a content control (or insert one with placeholder
- * text when nothing is selected). The selection must sit in one paragraph.
+ * text when nothing is selected). Always assigns a w:tag so the saved DOCX
+ * matches Word's content-control Properties (Tag field).
  */
 export function insertContentControl(view: EditorView, attrs: ContentControlAttrs): boolean {
   const { state } = view;
@@ -388,17 +414,17 @@ export function insertContentControl(view: EditorView, attrs: ContentControlAttr
   const { from, to, empty, $from, $to } = state.selection;
   if (!$from.sameParent($to) || !$from.parent.inlineContent) return false;
 
-  const placeholder = attrs.placeholder || attrs.alias || attrs.tag || 'Click to enter text';
-  const content = empty
-    ? state.schema.text(placeholder)
-    : state.doc.slice(from, to).content;
+  const occupied = getContentControls(state.doc).map((c) => c.tag);
+  const { tag, alias } = normalizeContentControlTagAttrs(attrs, occupied);
+  const placeholder = attrs.placeholder || alias || tag || 'Click to enter text';
+  const content = empty ? state.schema.text(placeholder) : state.doc.slice(from, to).content;
 
   const lock = attrs.lock && attrs.lock !== 'unlocked' ? attrs.lock : null;
   const node = sdtType.create(
     {
       sdtType: 'richText',
-      tag: attrs.tag || null,
-      alias: attrs.alias || null,
+      tag,
+      alias: alias || null,
       lock,
       placeholder,
       showingPlaceholder: false,
@@ -413,7 +439,7 @@ export function insertContentControl(view: EditorView, attrs: ContentControlAttr
   return true;
 }
 
-/** Change a content control's tag / title / lock */
+/** Change a content control's tag / title / lock (keeps a non-empty w:tag). */
 export function updateContentControl(
   view: EditorView,
   pos: number,
@@ -427,10 +453,22 @@ export function updateContentControl(
         ? attrs.lock
         : null
       : node.attrs.lock;
+
+  const occupied = getContentControls(view.state.doc)
+    .filter((c) => c.pos !== pos)
+    .map((c) => c.tag);
+  const { tag, alias } = normalizeContentControlTagAttrs(
+    {
+      tag: attrs.tag !== undefined ? attrs.tag : (node.attrs.tag as string | null),
+      alias: attrs.alias !== undefined ? attrs.alias : (node.attrs.alias as string | null),
+    },
+    occupied
+  );
+
   const tr = view.state.tr.setNodeMarkup(pos, undefined, {
     ...node.attrs,
-    ...(attrs.tag !== undefined ? { tag: attrs.tag || null } : {}),
-    ...(attrs.alias !== undefined ? { alias: attrs.alias || null } : {}),
+    tag,
+    alias: alias || null,
     lock: nextLock,
   });
   view.dispatch(tr);

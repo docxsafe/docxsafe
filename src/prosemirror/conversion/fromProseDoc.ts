@@ -585,8 +585,9 @@ function createInlineSdtFromNode(node: PMNode): InlineSdt {
 
   const properties: SdtProperties = {
     sdtType: (attrs.sdtType as SdtProperties['sdtType']) ?? 'richText',
-    alias: (attrs.alias as string) ?? undefined,
-    tag: (attrs.tag as string) ?? undefined,
+    alias: ((attrs.alias as string) || undefined) ?? undefined,
+    // Persist w:tag for Word Properties / binding
+    tag: ((attrs.tag as string) || undefined) ?? undefined,
     lock: (attrs.lock as SdtProperties['lock']) ?? undefined,
     placeholder: (attrs.placeholder as string) ?? undefined,
     showingPlaceholder: (attrs.showingPlaceholder as boolean) ?? undefined,

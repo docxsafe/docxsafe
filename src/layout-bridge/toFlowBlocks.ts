@@ -168,10 +168,7 @@ function extractRunFormatting(marks: readonly Mark[], theme?: Theme | null): Run
       }
 
       case 'comment':
-        formatting.commentIds = [
-          ...(formatting.commentIds ?? []),
-          mark.attrs.commentId as number,
-        ];
+        formatting.commentIds = [...(formatting.commentIds ?? []), mark.attrs.commentId as number];
         break;
 
       case 'insertion':
@@ -290,13 +287,15 @@ function paragraphToRuns(node: PMNode, startPos: number, _options: ToFlowBlocksO
       // SDT (Structured Document Tag / content control) — inline wrapper node.
       // Descend into its children to extract the actual text runs.
       const sdtInnerOffset = childPos + 1; // +1 for opening tag
-      const contentControl = {
+      const baseControl = {
         tag: (child.attrs.tag as string | null) ?? undefined,
         alias: (child.attrs.alias as string | null) ?? undefined,
         lock: (child.attrs.lock as string | null) ?? undefined,
       };
+      let isFirstSdtRun = true;
       child.forEach((sdtChild, sdtChildOffset) => {
         const sdtChildPos = sdtInnerOffset + sdtChildOffset;
+        const contentControl = { ...baseControl, isStart: isFirstSdtRun };
         if (sdtChild.isText && sdtChild.text) {
           const formatting = extractRunFormatting(sdtChild.marks, theme);
           const run: TextRun = {
@@ -308,6 +307,7 @@ function paragraphToRuns(node: PMNode, startPos: number, _options: ToFlowBlocksO
             pmEnd: sdtChildPos + sdtChild.nodeSize,
           };
           runs.push(run);
+          isFirstSdtRun = false;
         } else if (sdtChild.type.name === 'hardBreak') {
           const run: LineBreakRun = {
             kind: 'lineBreak',
@@ -315,15 +315,18 @@ function paragraphToRuns(node: PMNode, startPos: number, _options: ToFlowBlocksO
             pmEnd: sdtChildPos + sdtChild.nodeSize,
           };
           runs.push(run);
+          // Keep isFirstSdtRun so the label lands on the next text/tab run
         } else if (sdtChild.type.name === 'tab') {
           const formatting = extractRunFormatting(sdtChild.marks, theme);
           const run: TabRun = {
             kind: 'tab',
             ...formatting,
+            contentControl,
             pmStart: sdtChildPos,
             pmEnd: sdtChildPos + sdtChild.nodeSize,
           };
           runs.push(run);
+          isFirstSdtRun = false;
         } else if (sdtChild.type.name === 'image') {
           const attrs = sdtChild.attrs;
           const run: ImageRun = {
@@ -345,8 +348,23 @@ function paragraphToRuns(node: PMNode, startPos: number, _options: ToFlowBlocksO
             pmEnd: sdtChildPos + sdtChild.nodeSize,
           };
           runs.push(run);
+          // Images don't host the title chip; keep isFirstSdtRun for following text
         }
       });
+      // Empty content control — still show a labelled placeholder chip
+      if (isFirstSdtRun) {
+        const placeholder =
+          (child.attrs.placeholder as string | null) || baseControl.alias || baseControl.tag || ' ';
+        runs.push({
+          kind: 'text',
+          text: placeholder,
+          contentControl: { ...baseControl, isStart: true },
+          pmStart: sdtInnerOffset,
+          pmEnd: sdtInnerOffset,
+          color: '#808080',
+          italic: true,
+        });
+      }
     }
   });
 
@@ -654,8 +672,7 @@ function convertTableCell(node: PMNode, startPos: number, options: ToFlowBlocksO
   // Convert cell margins (twips) to pixel padding
   // Word default: 0 top/bottom, 108 twips (~7px) left/right
   const margins = attrs.margins as
-    | { top?: number; bottom?: number; left?: number; right?: number }
-    | undefined;
+    { top?: number; bottom?: number; left?: number; right?: number } | undefined;
   const padding = {
     top: margins?.top != null ? twipsToPixels(margins.top) : 0,
     right: margins?.right != null ? twipsToPixels(margins.right) : 7,

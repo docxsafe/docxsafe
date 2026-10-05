@@ -37,7 +37,13 @@ export type RunFormatting = {
   /** Tracked change (suggestion) this run belongs to */
   revision?: { type: 'insertion' | 'deletion'; revisionId: number; author: string; date?: string };
   /** Content control (Word tag) wrapping this run */
-  contentControl?: { tag?: string; alias?: string; lock?: string };
+  contentControl?: {
+    tag?: string;
+    alias?: string;
+    lock?: string;
+    /** First painted run of this control — hosts the top label */
+    isStart?: boolean;
+  };
   /** Part of a docxtemplater tag (`{name}`), painted as a chip */
   templateTag?: { type: string; part: 'open' | 'body' | 'close' };
 };
@@ -383,12 +389,7 @@ export type ColumnBreakBlock = {
  * Union of all flow block types (input to layout engine).
  */
 export type FlowBlock =
-  | ParagraphBlock
-  | TableBlock
-  | ImageBlock
-  | SectionBreakBlock
-  | PageBreakBlock
-  | ColumnBreakBlock;
+  ParagraphBlock | TableBlock | ImageBlock | SectionBreakBlock | PageBreakBlock | ColumnBreakBlock;
 
 // =============================================================================
 // MEASURES - Measurement results for blocks

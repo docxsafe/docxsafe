@@ -1,0 +1,19 @@
+#!/bin/sh
+
+# Run type checking (prefer bun when available; fall back to yarn/npm)
+echo "Running TypeScript type check..."
+if command -v bun >/dev/null 2>&1; then
+  bun run typecheck
+elif command -v yarn >/dev/null 2>&1; then
+  yarn typecheck
+else
+  npm run typecheck
+fi
+if [ $? -ne 0 ]; then
+  echo "TypeScript type check failed. Please fix the errors before committing."
+  exit 1
+fi
+
+# Run lint-staged (prettier + eslint on staged files)
+echo "Running lint-staged..."
+npx lint-staged

@@ -1,0 +1,536 @@
+[2026-02-06 10:30] TASK: 1.1 Cell merge/split via prosemirror-tables
+[2026-02-06 10:30] STATUS: starting
+[2026-02-06 10:30] NOTES: Created plan file 09_full_ooxml_support.md. Now implementing cell merge/split.
+[2026-02-06 10:35] STATUS: editing
+[2026-02-06 10:35] NOTES: Imported mergeCells, splitCell, CellSelection from prosemirror-tables into TableExtension.ts
+[2026-02-06 10:36] NOTES: Updated getTableContext() to detect CellSelection for hasMultiCellSelection
+[2026-02-06 10:36] NOTES: Added mergeCells/splitCell commands to TablePluginExtension
+[2026-02-06 10:37] NOTES: Updated commands/table.ts to delegate to real implementations
+[2026-02-06 10:37] NOTES: Added mergeCells/splitCell cases to DocxEditor.tsx handleTableAction
+[2026-02-06 10:38] STATUS: testing
+[2026-02-06 10:38] NOTES: typecheck passed, 32/32 existing table tests pass, 4/4 new merge/split tests pass
+[2026-02-06 10:39] STATUS: done
+
+[2026-02-06 10:40] TASK: 1.2 Upgrade cell border model to full BorderSpec
+[2026-02-06 10:40] STATUS: starting
+[2026-02-06 10:41] STATUS: editing
+[2026-02-06 10:41] NOTES: Updated TableCellAttrs in schema/nodes.ts — removed borderColors/borderWidths, borders now {top?: BorderSpec}
+[2026-02-06 10:42] NOTES: Updated TableExtension.ts — new buildCellBorderStyles with 31 OOXML→CSS style mappings, updated cell specs, createTable, setTableBorders, setTableBorderColor
+[2026-02-06 10:43] NOTES: Simplified toProseDoc.ts — passes through full BorderSpec objects, no more splitting into 3 props
+[2026-02-06 10:44] NOTES: Simplified fromProseDoc.ts — direct assignment, removed 50 lines of reconstruction logic
+[2026-02-06 10:45] NOTES: Updated layout-bridge/toFlowBlocks.ts — extractCellBorders now reads BorderSpec objects
+[2026-02-06 10:46] STATUS: testing
+[2026-02-06 10:46] NOTES: typecheck passed, 32/32 table tests pass, 4/4 merge/split tests pass
+[2026-02-06 10:46] STATUS: done
+
+[2026-02-06 10:47] TASK: 1.3 Per-cell border editing commands
+[2026-02-06 10:47] STATUS: starting
+[2026-02-06 10:48] NOTES: Added setCellBorder(side, spec) command to TableExtension.ts
+[2026-02-06 10:49] NOTES: Added cellBorder action type to TableAction, per-side border buttons to dropdown
+[2026-02-06 10:50] NOTES: Wired borderTop/Bottom/Left/Right + cellBorder action in DocxEditor.tsx
+[2026-02-06 10:50] STATUS: done
+
+[2026-02-06 11:00] TASK: 1.4 Vertical alignment + cell margins UI
+[2026-02-06 11:00] STATUS: editing
+[2026-02-06 11:00] NOTES: Adding margins attr to TableCellAttrs, setCellVerticalAlign + setCellMargins commands, toProseDoc/fromProseDoc conversion, UI controls
+[2026-02-06 11:05] NOTES: Added margins attr to schema/nodes.ts, buildCellPaddingStyles in TableExtension.ts
+[2026-02-06 11:06] NOTES: Added setCellVerticalAlign + setCellMargins commands + re-exports
+[2026-02-06 11:07] NOTES: Updated toProseDoc.ts and fromProseDoc.ts for margin round-trip
+[2026-02-06 11:08] NOTES: Added VerticalAlignRow + CellMarginsRow UI in TableOptionsDropdown.tsx
+[2026-02-06 11:09] NOTES: Wired cellVerticalAlign + cellMargins actions in DocxEditor.tsx
+[2026-02-06 11:10] STATUS: testing
+[2026-02-06 11:10] NOTES: typecheck passed, 4/4 merge-split tests pass, 2 pre-existing failures confirmed
+[2026-02-06 11:10] STATUS: done
+
+[2026-02-06 11:15] TASK: 1.5 Text direction + no-wrap controls
+[2026-02-06 11:15] STATUS: editing
+[2026-02-06 11:15] NOTES: Adding textDirection attr, OOXML→CSS mapping, setCellTextDirection + toggleNoWrap commands, UI controls
+[2026-02-06 11:20] NOTES: Added textDirection attr to TableCellAttrs, buildTextDirectionStyles OOXML→CSS mapping (tbRl, btLr, rl, tb)
+[2026-02-06 11:21] NOTES: Added setCellTextDirection + toggleNoWrap commands, re-exports, UI (TextDirectionRow dropdown, NoWrapRow toggle)
+[2026-02-06 11:22] NOTES: Updated toProseDoc/fromProseDoc for textDirection round-trip
+[2026-02-06 11:23] STATUS: testing
+[2026-02-06 11:23] NOTES: typecheck passed, 4/4 table tests pass
+[2026-02-06 11:23] STATUS: done
+
+[2026-02-06 11:25] TASK: 1.6 Row height editing
+[2026-02-06 11:25] STATUS: editing
+[2026-02-06 11:25] NOTES: Row height attrs + conversion already exist. Adding setRowHeight command and UI
+[2026-02-06 11:28] NOTES: Added setRowHeight(height, rule) command, RowHeightRow UI with rule selector + height input
+[2026-02-06 11:29] STATUS: testing
+[2026-02-06 11:29] NOTES: typecheck passed, 4/4 table tests pass
+[2026-02-06 11:29] STATUS: done
+
+[2026-02-06 11:32] TASK: 2.1 Header row repeat toggle
+[2026-02-06 11:32] STATUS: editing
+[2026-02-06 11:32] NOTES: isHeader already round-trips. Adding toggleHeaderRow command + checkbox UI
+[2026-02-06 11:34] NOTES: Added toggleHeaderRow command, HeaderRowRow button in dropdown, wired in DocxEditor
+[2026-02-06 11:35] STATUS: testing
+[2026-02-06 11:35] NOTES: typecheck passed, 4/4 table tests pass
+[2026-02-06 11:35] STATUS: done
+
+[2026-02-06 11:38] TASK: 2.2 Auto-fit + distribute columns evenly
+[2026-02-06 11:38] STATUS: editing
+[2026-02-06 11:38] NOTES: Adding distributeColumns + autoFitContents commands
+[2026-02-06 11:40] NOTES: Added distributeColumns (equal widths) + autoFitContents (remove explicit widths) commands + UI
+[2026-02-06 11:41] STATUS: testing
+[2026-02-06 11:41] NOTES: typecheck passed, 4/4 table tests pass
+[2026-02-06 11:41] STATUS: done
+
+[2026-02-06 11:44] TASK: 2.3 Table properties dialog
+[2026-02-06 11:44] STATUS: editing
+[2026-02-06 11:44] NOTES: Creating TablePropertiesDialog.tsx with width/alignment/indent/layout controls
+[2026-02-06 11:48] NOTES: Created TablePropertiesDialog.tsx, setTableProperties command, wired dialog open/apply
+[2026-02-06 11:49] STATUS: testing
+[2026-02-06 11:49] NOTES: typecheck passed, 4/4 table tests pass
+[2026-02-06 11:49] STATUS: done
+
+[2026-02-06 12:00] TASK: 2.4 Table style gallery
+[2026-02-06 12:00] STATUS: starting
+[2026-02-06 12:00] NOTES: Research complete. StyleResolver has getStyle() but no getTableStyles(). toProseDoc already resolves conditional formatting. Need: getTableStyles(), applyTableStyle command, TableStyleGallery.tsx component
+[2026-02-06 12:02] STATUS: editing
+[2026-02-06 12:02] NOTES: Adding getTableStyles() to StyleResolver, predefined table styles, applyTableStyle command
+[2026-02-06 12:08] NOTES: Added getTableStyles() to StyleResolver
+[2026-02-06 12:09] NOTES: Added applyTableStyle command to TableExtension.ts — walks all cells applying conditional formatting (firstRow/lastRow/banded/firstCol/lastCol/corners)
+[2026-02-06 12:10] NOTES: Created TableStyleGallery.tsx with 14 built-in styles, visual previews, support for doc styles
+[2026-02-06 12:11] NOTES: Added re-exports through commands/table.ts → commands/index.ts → prosemirror/index.ts
+[2026-02-06 12:12] NOTES: Wired gallery in Toolbar.tsx, action handler in DocxEditor.tsx
+[2026-02-06 12:13] STATUS: testing
+[2026-02-06 12:13] NOTES: typecheck passed, running table tests
+[2026-02-06 12:14] NOTES: 4/4 merge-split tests pass, 13/15 scenario table tests pass (2 pre-existing failures)
+[2026-02-06 12:14] STATUS: done
+
+[2026-02-06 12:20] TASK: 3.1 Image insert from file
+[2026-02-06 12:20] STATUS: starting
+[2026-02-06 12:20] NOTES: Research complete. Image nodes already exist with full attrs. Need: insertImage command, file picker UI, media tracking
+[2026-02-06 12:22] STATUS: editing
+[2026-02-06 12:22] NOTES: Adding onInsertImage prop to Toolbar, image insert button, file picker handler in DocxEditor
+[2026-02-06 12:25] NOTES: Added onInsertImage prop to Toolbar, image button in Insert group
+[2026-02-06 12:26] NOTES: Added hidden file input + handleInsertImageClick + handleImageFileChange in DocxEditor
+[2026-02-06 12:27] NOTES: Image handler reads file as dataURL, gets natural dimensions, constrains to 612px max, inserts PM node
+[2026-02-06 12:28] STATUS: testing
+[2026-02-06 12:28] NOTES: typecheck passed, 4/4 table tests pass, 26/26 formatting tests pass
+[2026-02-06 12:28] STATUS: done
+
+[2026-02-06 12:30] TASK: 3.2 Text wrapping mode selector
+[2026-02-06 12:30] STATUS: starting
+[2026-02-06 12:30] NOTES: Need setImageWrapType command + floating toolbar on image selection
+[2026-02-06 12:35] STATUS: editing
+[2026-02-06 12:35] NOTES: Added pmImageContext to state, detecting NodeSelection on image nodes
+[2026-02-06 12:36] NOTES: Creating setImageWrapType handler + ImageWrapToolbar UI in Toolbar
+[2026-02-06 12:38] NOTES: Added imageContext/onImageWrapType props to Toolbar, 6 wrapping mode buttons
+[2026-02-06 12:39] NOTES: handleImageWrapType maps wrap types to displayMode+cssFloat combos
+[2026-02-06 12:40] STATUS: testing
+[2026-02-06 12:40] NOTES: typecheck passed, 30/30 tests pass (26 formatting + 4 table)
+[2026-02-06 12:40] STATUS: done
+
+[2026-02-06 12:45] TASK: 3.3 Image rotation + flip UI
+[2026-02-06 12:45] STATUS: editing
+[2026-02-06 12:45] NOTES: Adding rotate CW/CCW + flip H/V buttons to image toolbar in Toolbar.tsx
+[2026-02-06 12:48] NOTES: Added handleImageTransform handler with rotate/flip logic, parsing current CSS transform
+[2026-02-06 12:49] NOTES: Added 4 buttons (rotateCW, rotateCCW, flipH, flipV) to image toolbar section
+[2026-02-06 12:50] STATUS: testing
+[2026-02-06 12:50] NOTES: typecheck passed, 4/4 table tests pass
+[2026-02-06 12:50] STATUS: done
+
+[2026-02-06 12:55] TASK: 3.4 Image positioning dialog
+[2026-02-06 12:55] STATUS: editing
+[2026-02-06 12:55] NOTES: Creating ImagePositionDialog.tsx with horizontal/vertical alignment, offset, relative-to, and distance-from-text controls
+[2026-02-06 13:00] NOTES: Wired dialog in DocxEditor.tsx with imagePositionOpen state, handleOpenImagePosition, handleApplyImagePosition
+[2026-02-06 13:01] STATUS: testing
+[2026-02-06 13:01] NOTES: typecheck passed, 4/4 table tests pass
+[2026-02-06 13:01] STATUS: done
+
+[2026-02-06 13:02] TASK: 3.5 Image alt text + border/outline
+[2026-02-06 13:02] STATUS: starting
+[2026-02-06 13:02] NOTES: Need to add alt text editor in image properties, border style/color/width as CSS + a:ln serialization
+[2026-02-06 13:05] STATUS: editing
+[2026-02-06 13:05] NOTES: Adding borderWidth/borderColor/borderStyle attrs to ImageAttrs + ImageExtension, creating ImagePropertiesDialog
+[2026-02-06 13:10] NOTES: Added border attrs to ImageAttrs, ImageExtension (parseDOM/toDOM with CSS border rendering)
+[2026-02-06 13:11] NOTES: Created ImagePropertiesDialog.tsx with alt text textarea + border width/style/color + preview
+[2026-02-06 13:12] NOTES: Added imagePropsOpen state, handleOpenImageProperties, handleApplyImageProperties to DocxEditor
+[2026-02-06 13:13] NOTES: Added outline field to Image type, border parsing in toProseDoc, round-trip in fromProseDoc
+[2026-02-06 13:14] NOTES: Added "Properties" button (tune icon) to Toolbar image section
+[2026-02-06 13:15] STATUS: testing
+[2026-02-06 13:15] NOTES: typecheck passed, 30/31 tests pass (1 pre-existing skip)
+[2026-02-06 13:15] STATUS: done
+
+[2026-02-06 13:16] TASK: 3.6 Image drag to reposition
+[2026-02-06 13:16] STATUS: starting
+[2026-02-06 13:16] NOTES: Researching drag infrastructure and EditableImage component
+[2026-02-06 13:20] STATUS: editing
+[2026-02-06 13:20] NOTES: ProseMirror has built-in drag for draggable:true nodes. Creating ImageDragExtension plugin for ghost overlay + drop handling
+[2026-02-06 13:22] NOTES: Created ImageDragExtension.ts with dragstart/dragend/dragover/drop handlers, ghost outline during drag
+[2026-02-06 13:23] NOTES: Added CSS for grab cursor on selected images, opacity+dashed outline during drag
+[2026-02-06 13:24] NOTES: Registered ImageDragExtension in StarterKit
+[2026-02-06 13:25] STATUS: testing
+[2026-02-06 13:25] NOTES: typecheck passed, 30/31 tests pass (1 pre-existing skip)
+[2026-02-06 13:25] STATUS: done
+
+[2026-02-06 13:28] TASK: 4.1 Editable text boxes
+[2026-02-06 13:28] STATUS: starting
+[2026-02-06 13:28] NOTES: Need TextBoxExtension, isolating block node, focus management, wps:wsp/txbx round-trip
+[2026-02-06 13:32] STATUS: reading
+[2026-02-06 13:32] NOTES: TextBox type has size, position, wrap, fill, outline, content:Paragraph[], margins
+[2026-02-06 13:33] NOTES: Currently parseDrawingContent only handles images - text boxes silently dropped
+[2026-02-06 13:34] STATUS: editing
+[2026-02-06 13:34] NOTES: Creating TextBoxExtension.ts as isolating block node with paragraph content
+[2026-02-06 13:36] NOTES: Created TextBoxExtension with attrs: width, height, fillColor, outlineWidth/Color/Style, margins, verticalAlign, displayMode
+[2026-02-06 13:37] NOTES: Node spec: group='block', content='(paragraph|table)+', isolating=true, draggable=true
+[2026-02-06 13:38] NOTES: toDOM renders as div.docx-textbox with inline styles for fill, border, padding, float
+[2026-02-06 13:39] NOTES: Registered in StarterKit, added CSS for .docx-textbox
+[2026-02-06 13:40] NOTES: Updated toProseDoc: extractTextBoxesFromParagraph scans for shape content with textBody, convertTextBox creates PM node
+[2026-02-06 13:41] NOTES: Updated fromProseDoc: convertPMTextBox converts back to Paragraph wrapping ShapeContent with textBody
+[2026-02-06 13:42] NOTES: Fixed ShapeFill type (uses color not solidColor), fixed outline style type casting
+[2026-02-06 13:43] STATUS: testing
+[2026-02-06 13:43] NOTES: typecheck passed, 30/31 tests pass (1 pre-existing skip)
+[2026-02-06 13:43] STATUS: done
+
+[2026-02-06 13:46] TASK: 4.2 Shape selection + basic properties
+[2026-02-06 13:46] STATUS: starting
+[2026-02-06 13:46] NOTES: Need ShapeExtension as atom node, selection outline, fill/outline controls
+[2026-02-06 13:48] STATUS: editing
+[2026-02-06 13:48] NOTES: Created ShapeExtension.ts as inline atom node with SVG rendering
+[2026-02-06 13:49] NOTES: Shape types: rect, ellipse, roundRect, triangle, diamond, line; SVG path builder
+[2026-02-06 13:50] NOTES: Added shape conversion in toProseDoc (convertShape) and fromProseDoc (createShapeRun)
+[2026-02-06 13:51] NOTES: Registered in StarterKit, added CSS for selection outline
+[2026-02-06 13:52] STATUS: testing
+[2026-02-06 13:52] NOTES: typecheck passed, 30/31 tests pass
+[2026-02-06 13:52] STATUS: done
+
+[2026-02-06 13:55] TASK: 4.3 Shape insertion
+[2026-02-06 13:55] STATUS: editing
+[2026-02-06 13:55] NOTES: Creating ShapeGallery dropdown with preset shapes, insert handler in DocxEditor
+[2026-02-06 13:57] NOTES: Created ShapeGallery.tsx with 7 presets: rect, roundRect, ellipse, triangle, diamond, line, textBox
+[2026-02-06 13:58] NOTES: Added onInsertShape prop to Toolbar, ShapeGallery in Insert group
+[2026-02-06 13:59] NOTES: Added handleInsertShape in DocxEditor — creates shape or textBox nodes via schema
+[2026-02-06 14:00] STATUS: testing
+[2026-02-06 14:00] NOTES: typecheck passed, 30/31 tests pass
+[2026-02-06 14:00] STATUS: done
+
+[2026-02-06 14:02] TASK: 4.4 Shape effects rendering
+[2026-02-06 14:02] STATUS: editing
+[2026-02-06 14:02] NOTES: Adding gradient fill support to shape SVG, shadow/glow CSS properties
+[2026-02-06 14:10] STATUS: editing
+[2026-02-06 14:10] NOTES: Added gradient attrs (gradientType/Angle/Stops) + shadow/glow attrs to ShapeExtension
+[2026-02-06 14:11] NOTES: Updated toDOM to render SVG linearGradient/radialGradient defs, CSS drop-shadow + glow filter
+[2026-02-06 14:12] NOTES: Updated toProseDoc convertShape to extract gradient data from ShapeFill
+[2026-02-06 14:13] NOTES: Updated fromProseDoc createShapeRun to round-trip gradient fills
+[2026-02-06 14:14] NOTES: Updated render/Shape.tsx to render SVG gradients in non-PM rendering path
+[2026-02-06 14:15] STATUS: testing
+[2026-02-06 14:15] NOTES: typecheck passed, 30/31 tests pass (1 pre-existing skip)
+[2026-02-06 14:15] STATUS: done
+
+[2026-02-06 14:20] TASK: 5.1 Editable headers/footers
+[2026-02-06 14:20] STATUS: starting
+[2026-02-06 14:20] NOTES: Research complete. Headers rendered via layout-painter as absolute divs on pages. Need: double-click handler, overlay editor with PM, dim body, save back.
+[2026-02-06 14:22] STATUS: editing
+[2026-02-06 14:22] NOTES: Creating HeaderFooterEditor.tsx — overlay PM editor for header/footer content
+[2026-02-06 14:30] NOTES: Added headerFooterToProseDoc + proseDocToBlocks conversion functions
+[2026-02-06 14:32] NOTES: Created HeaderFooterEditor.tsx — modal overlay with dedicated ProseMirror EditorView, separate undo history
+[2026-02-06 14:34] NOTES: Added onHeaderFooterDoubleClick prop to PagedEditor, detects double-click on .layout-page-header/.layout-page-footer
+[2026-02-06 14:36] NOTES: Wired in DocxEditor: hfEditPosition state, handleHeaderFooterDoubleClick, handleHeaderFooterSave (updates HeaderFooter in document package)
+[2026-02-06 14:37] NOTES: Added CSS: hover hint on header/footer areas, ProseMirror styles for hf-editor-pm
+[2026-02-06 14:38] STATUS: testing
+[2026-02-06 14:38] NOTES: typecheck passed, 30/31 tests pass (1 pre-existing skip)
+[2026-02-06 14:38] STATUS: done
+
+[2026-02-06 14:40] TASK: 5.2 Section break editing
+[2026-02-06 14:40] STATUS: starting
+[2026-02-06 14:40] NOTES: Need to visualize section boundaries, insert/delete section breaks
+[2026-02-06 14:45] STATUS: editing
+[2026-02-06 14:45] NOTES: Added sectionBreakType attr to ParagraphAttrs + ParagraphExtension, CSS visual indicator, insert/remove commands
+[2026-02-06 14:46] STATUS: testing
+[2026-02-06 14:46] NOTES: typecheck passed, 30/31 tests pass
+[2026-02-06 14:46] STATUS: done
+
+[2026-02-06 14:50] TASK: 5.3 Page borders
+[2026-02-06 14:50] STATUS: starting
+[2026-02-06 14:50] NOTES: Render section-level page borders on page container. CSS border with full OOXML border spec styles.
+[2026-02-06 14:52] STATUS: editing
+[2026-02-06 14:52] NOTES: Added pageBorders+theme to RenderPageOptions, applyPageBorders in applyPageStyles using borderToStyle utility
+[2026-02-06 14:53] NOTES: Passed pageBorders+theme from PagedEditor to renderPages
+[2026-02-06 14:54] STATUS: testing
+[2026-02-06 14:54] NOTES: typecheck passed, 55/56 tests pass (1 pre-existing skip)
+[2026-02-06 14:54] STATUS: done
+
+[2026-02-06 15:00] TASK: 6.1 Footnote/endnote editing
+[2026-02-06 15:00] STATUS: starting
+[2026-02-06 15:00] NOTES: Clickable reference markers. Footnote editing area at page bottom. Insert/delete commands. Auto-renumbering.
+[2026-02-06 15:05] STATUS: researching
+[2026-02-06 15:05] NOTES: Footnote infrastructure already comprehensive: parsing, rendering (FootnoteRef.tsx, FootnoteArea.tsx), PM mark, CSS styling all exist
+[2026-02-06 15:08] STATUS: editing
+[2026-02-06 15:08] NOTES: Added NoteReferenceContent round-trip in fromProseDoc.ts — detects footnoteRef mark, creates NoteReferenceContent
+[2026-02-06 15:10] NOTES: Upgraded FootnoteRefExtension with insertFootnote/insertEndnote/deleteNoteRef commands
+[2026-02-06 15:12] STATUS: testing
+[2026-02-06 15:12] NOTES: typecheck passed, 58/61 tests pass (3 pre-existing skips)
+[2026-02-06 15:12] STATUS: done
+
+[2026-02-06 15:15] TASK: 6.2 Footnote/endnote properties
+[2026-02-06 15:15] STATUS: starting
+[2026-02-06 15:18] STATUS: editing
+[2026-02-06 15:18] NOTES: Created FootnotePropertiesDialog.tsx — position, numFmt, numStart, numRestart for both footnotes and endnotes
+[2026-02-06 15:19] NOTES: Wired in DocxEditor: footnotePropsOpen state, handleApplyFootnoteProperties updates finalSectionProperties
+[2026-02-06 15:20] STATUS: testing
+[2026-02-06 15:20] NOTES: typecheck passed, 26/27 tests pass (1 pre-existing skip)
+[2026-02-06 15:20] STATUS: done
+
+[2026-02-06 15:25] TASK: 7.1 Additional text effects
+[2026-02-06 15:25] STATUS: starting
+[2026-02-06 15:25] NOTES: Emboss, imprint, outline, shadow, emphasis marks as mark extensions + toolbar toggles
+[2026-02-06 15:28] STATUS: editing
+[2026-02-06 15:28] NOTES: Created TextEffectsExtensions.ts — emboss, imprint, textShadow, emphasisMark, textOutline mark extensions
+[2026-02-06 15:29] NOTES: Registered in StarterKit, added toProseDoc/fromProseDoc conversion
+[2026-02-06 15:30] STATUS: testing
+[2026-02-06 15:30] NOTES: typecheck passed, 26/27 tests pass (1 pre-existing skip)
+[2026-02-06 15:30] STATUS: done
+
+[2026-02-06 15:32] TASK: 7.2 Custom tab stop editor
+[2026-02-06 15:32] STATUS: starting
+[2026-02-06 15:35] STATUS: editing
+[2026-02-06 15:35] NOTES: Added getParagraphTabs query, setTabs/addTabStop/removeTabStop commands to ParagraphExtension
+[2026-02-06 15:37] NOTES: Added TabStopMarker to HorizontalRuler — L/C/R/D symbols, click-to-add, double-click-to-remove
+[2026-02-06 15:38] STATUS: testing
+[2026-02-06 15:38] NOTES: typecheck passed, 55/56 tests pass (1 pre-existing skip)
+[2026-02-06 15:38] STATUS: done
+
+[2026-02-06 15:40] TASK: 7.3 Character spacing/position UI
+[2026-02-06 15:40] STATUS: editing
+[2026-02-06 15:40] NOTES: Created CharacterSpacingExtension mark — spacing, position, scale, kerning in single mark
+[2026-02-06 15:42] NOTES: Added toProseDoc/fromProseDoc conversion, registered in StarterKit
+[2026-02-06 15:43] STATUS: done
+
+[2026-02-06 15:15] TASK: 6.2 Footnote/endnote properties
+[2026-02-06 15:15] STATUS: starting
+[2026-02-06 15:15] NOTES: Position, numbering format, restart rules per section. Infrastructure already parsed/serialized.
+[2026-09-30 23:46] TASK: Remove docxtemplater view (use Word tags)
+[2026-09-30 23:46] STATUS: starting
+[2026-09-30 23:46] NOTES: User requested removal of docxtemplater view; exploring demo routes and nav
+[2026-09-30 23:46] STATUS: researching
+[2026-09-30 23:46] NOTES: Will remove /docxtemplater route, nav, createTemplateDocument, withTemplatePlugin from demo/main.tsx; update review.spec.ts alignment test
+[2026-09-30 23:47] STATUS: editing
+[2026-09-30 23:47] NOTES: Removed docxtemplater route from demo/main.tsx; rewrote alignment e2e for Word tags
+[2026-09-30 23:47] STATUS: running
+[2026-09-30 23:47] NOTES: typecheck passed via npm run typecheck
+[2026-09-30 23:47] STATUS: testing
+[2026-09-30 23:47] NOTES: Running alignment + Word tags e2e tests
+[2026-09-30 23:48] STATUS: done
+[2026-09-30 23:48] NOTES: Removed docxtemplater demo view. typecheck OK. Playwright browsers missing locally so e2e not run; alignment test rewritten for Word tags pane.
+[2026-09-30 23:48] TASK: Remove docxtemplater view (use Word tags)
+[2026-09-30 23:48] STATUS: done
+[2026-09-30 23:48] NOTES: Not committing (user rule: only commit when asked). Demo is single-route; template plugin still in codebase as optional plugin.
+[2026-09-30 23:48] TASK: Fix font not updating correctly
+[2026-09-30 23:48] STATUS: starting
+[2026-09-30 23:48] NOTES: Investigating font apply/update path in ProseMirror commands and toolbar
+[2026-09-30 23:50] STATUS: researching
+[2026-09-30 23:50] NOTES: Root cause: FontPicker onChange emits CSS stack (Georgia, serif); painter quotes whole stack so browser falls back
+[2026-09-30 23:50] STATUS: editing
+[2026-09-30 23:50] NOTES: Fixing FontPicker to emit font.name; normalizing setFontFamily; using resolveFontFamily in painter/measure
+[2026-09-30 23:51] STATUS: testing
+[2026-09-30 23:51] NOTES: typecheck passed; running fonts.spec.ts
+[2026-09-30 23:54] STATUS: researching
+[2026-09-30 23:54] NOTES: Toolbar shows Georgia but painted text still sans-serif - tracing layout update after mark change
+[2026-09-30 23:56] STATUS: done
+[2026-09-30 23:56] NOTES: Font fix verified - FontPicker emits OOXML name; painter uses resolveFontFamily; 5/5 change-font e2e passed; typecheck OK
+[2026-09-30 23:57] TASK: Allow locking Word tags on create/edit
+[2026-09-30 23:57] STATUS: starting
+[2026-09-30 23:57] NOTES: Exploring content control lock support in review/commands and properties dialog
+[2026-09-30 23:57] STATUS: researching
+[2026-09-30 23:57] NOTES: lock already in schema/parser/serializer; need UI checkboxes + pass lock through insert/update/dialogs
+[2026-09-30 23:57] STATUS: editing
+[2026-09-30 23:57] NOTES: Adding Word-style lock checkboxes to TagForm + Properties dialog; wiring lock through insert/update/remove
+[2026-10-01 00:00] STATUS: testing
+[2026-10-01 00:00] NOTES: typecheck passed; running Word tags lock e2e
+[2026-10-01 00:00] STATUS: done
+[2026-10-01 00:00] NOTES: Tag lock UI + OOXML w:lock round-trip + enforcement plugin. 3/3 Word tags e2e passed.
+[2026-10-01 00:06] TASK: Allow add comment on word selection
+[2026-10-01 00:06] STATUS: starting
+[2026-10-01 00:06] NOTES: Investigating comment insert path when text is selected
+[2026-10-01 00:12] STATUS: researching
+[2026-10-01 00:12] NOTES: Comments ignore lastSelectionRef; will restore selection for canComment/startComment and add context menu item
+[2026-10-01 00:12] STATUS: editing
+[2026-10-01 00:12] NOTES: Restoring lastSelection for comments; Unicode word expand; PM-based selectText
+[2026-10-01 00:14] STATUS: testing
+[2026-10-01 00:14] NOTES: typecheck OK; running comment e2e tests
+[2026-10-01 00:14] STATUS: done
+[2026-10-01 00:14] NOTES: Selecting a word enables New Comment (saved selection + word expand). Comment e2e green including new test.
+[2026-10-01 07:52] TASK: Floating comment icon on text selection
+[2026-10-01 07:52] STATUS: starting
+[2026-10-01 07:52] NOTES: Exploring selection overlay / balloons to add Word-like comment icon at selection edge
+[2026-10-01 07:53] STATUS: editing
+[2026-10-01 07:53] NOTES: Adding selection-edge comment icon in SelectionOverlay, wiring onNewComment from DocxEditor
+[2026-10-01 07:54] STATUS: testing
+[2026-10-01 07:54] NOTES: typecheck OK; running selection comment icon e2e
+[2026-10-01 07:55] STATUS: done
+[2026-10-01 07:55] NOTES: Word-style selection comment icon at right edge of highlight. e2e passed.
+[2026-10-01 07:58] TASK: Fix active formatting button text color
+[2026-10-01 07:58] STATUS: starting
+[2026-10-01 07:58] NOTES: Inspecting RibbonButton checked/active styles for bold/italic
+[2026-10-01 07:58] STATUS: editing
+[2026-10-01 07:58] NOTES: Active ToolbarButton uses bg-slate-900 (too dark); switching to Word-like light bg + accent text/icon color
+[2026-10-01 07:59] STATUS: done
+[2026-10-01 07:59] NOTES: Active format buttons now use light blue bg + accent (#185abd) icon/text instead of slate-900 dark invert
+[2026-10-01 08:01] TASK: In-document header/footer edit (hover + double-click)
+[2026-10-01 08:01] STATUS: starting
+[2026-10-01 08:01] NOTES: Exploring current header/footer popup vs page rendering
+[2026-10-01 08:03] STATUS: researching
+[2026-10-01 08:03] NOTES: Will always paint HF zones, Word-like blue hover, replace modal with in-page editor
+[2026-10-01 08:07] STATUS: testing
+[2026-10-01 08:07] NOTES: typecheck OK; running Header & Footer e2e
+
+[2026-10-01 08:08] TASK: Word-style header/footer in-document edit
+[2026-10-01 08:08] STATUS: editing
+[2026-10-01 08:08] NOTES: Portaled HF editor to document.body with fixed positioning — pagesRoot is aria-hidden so Playwright could not find Save
+[2026-10-01 08:10] STATUS: testing
+[2026-10-01 08:10] NOTES: Header & Footer e2e 4/4 passed (Blank save, double-click, Page X of Y, Remove Footer)
+[2026-10-01 08:10] STATUS: done
+[2026-10-01 08:10] STATUS: done
+[2026-10-01 08:10] NOTES: In-document HF editor: fixed portal to body, Save clickable; all Header & Footer e2e green
+[2026-10-01 08:11] TASK: Comment icon on right edge without blocking selection
+[2026-10-01 08:11] STATUS: starting
+[2026-10-01 08:12] STATUS: editing
+[2026-10-01 08:12] NOTES: Moving selection comment btn to page right edge; defer until pointerup so drag-select works
+[2026-10-01 08:15] STATUS: done
+[2026-10-01 08:15] NOTES: Comment icon pinned to page right edge; deferred until pointerup so drag-select works; e2e green
+[2026-10-01 08:18] TASK: Word-native header/footer editing with toolbar + page numbers
+[2026-10-01 08:18] STATUS: starting
+[2026-10-01 08:19] STATUS: researching
+[2026-10-01 08:19] NOTES: Full-screen HF catcher blocks ribbon — toolbar formatting never reaches HF view. Will route getActiveEditorView to HF + Word-style chrome + page number insert
+[2026-10-01 08:21] STATUS: testing
+[2026-10-01 08:21] NOTES: Running Header & Footer e2e + new formatting/page-number test
+[2026-10-01 08:25] STATUS: done
+[2026-10-01 08:25] NOTES: HF editing uses main ribbon (bold/color/etc), Word-style close bar, Insert Page Number at cursor; e2e 5/5 green
+[2026-10-01 14:43] TASK: Fix comment highlight/anchor jumping away from selection
+[2026-10-01 14:43] STATUS: starting
+[2026-10-01 14:45] STATUS: editing
+[2026-10-01 14:45] NOTES: Prefer saved selection for draft; spanAtPos must use tightest layout-run (not fragment divs)
+[2026-10-01 14:46] STATUS: done
+[2026-10-01 14:46] NOTES: Comment highlight jump fixed — prefer saved selection; draft connector uses tightest layout-run range. Comment e2e 10/10
+[2026-10-01 22:13] TASK: Yjs + y-webrtc collaboration module
+[2026-10-01 22:13] STATUS: testing
+[2026-10-01 22:13] NOTES: typecheck clean; wiring DocxEditor collaboration prop + demo toggle
+[2026-10-01 22:13] STATUS: done
+[2026-10-01 22:13] NOTES: Collaboration module shipped — decidendi-editor/collaboration (Yjs + y-webrtc), DocxEditor prop, demo Collaborate toggle
+[2026-10-01 22:16] TASK: Fix document open broken
+[2026-10-01 22:16] STATUS: starting
+[2026-10-01 22:18] STATUS: done
+[2026-10-01 22:18] NOTES: Open broken with Collaborate on — Yjs fragment kept empty seed; replaceFragmentWithProseDoc on File Open/New. Solo+collab open verified
+[2026-10-01 22:20]
+[2026-10-01 22:20] TASK: Open document then collaborate
+[2026-10-01 22:20] STATUS: done
+[2026-10-01 22:20] NOTES: Fixed open-then-collab: seed Yjs from history.state on join; remount PM for y-plugins; no demo remount wipe. Verified open→collab, open-in-collab, leave — all keep 24 words.
+[2026-10-01 22:22] TASK: Fix collab after open document
+[2026-10-01 22:22] STATUS: starting
+[2026-10-01 22:22] NOTES: User reports collab not working after opening a document — investigating seed/bind/sync path
+[2026-10-01 22:29] STATUS: researching
+[2026-10-01 22:29] NOTES: Root cause: default signaling wss://y-webrtc-eu.fly.dev is down (cross-browser fails). Same-tab BC works after open. Also room/name keystrokes recreate sessions. Fixing: local signaling + stable join + seed-after-ready.
+[2026-10-01 22:34] STATUS: done
+[2026-10-01 22:34] NOTES: Fixed open-then-collab: seed after whenRoomReady; stable room join; local signaling + vite /signaling proxy. Same-tab BC sync verified. Public fly signaling is down.
+[2026-10-01 22:34] STATUS: done
+[2026-10-01 22:34] NOTES: Fixed open-then-collab binding; verified same-tab sync after open.
+[2026-10-01 22:35] STATUS: done
+[2026-10-01 22:35] NOTES: open-then-collab same-tab verified after seed-after-ready + stable join + signaling proxy.
+[2026-10-01 22:35] TASK: Show peer initials at remote cursors
+[2026-10-01 22:35] STATUS: starting
+[2026-10-01 22:35] NOTES: Investigating yCursorPlugin rendering vs paged/hidden PM layout
+[2026-10-01 22:35] STATUS: researching
+[2026-10-01 22:35] NOTES: yCursor decorations are in HiddenProseMirror (off-screen). Need visual overlay carets with initials via awareness + getCaretFromDom.
+[2026-10-01 22:37] STATUS: testing
+[2026-10-01 22:37] NOTES: Wired remote caret overlay with initials; running typecheck + 2-tab check
+[2026-10-01 22:37] STATUS: done
+[2026-10-01 22:37] NOTES: Remote caret initials on paged overlay — Alice sees BB, Bob sees AW. publishLocalCursor + readRemoteCursors + SelectionOverlay remoteCarets.
+[2026-10-02 18:28] TASK: WebSocket collaborative-docs library
+[2026-10-02 18:28] STATUS: done
+[2026-10-02 18:28] NOTES: Implemented collaborative-docs (types, WS server, local persistence, DocxEditor bridge). Cross-profile contexts sync via WS; remote carets OK.
+[2026-10-02 19:04] TASK: Fix live editing sync
+[2026-10-02 19:04] STATUS: starting
+[2026-10-02 19:04] NOTES: Live edits not propagating between users — checking servers + sync path
+[2026-10-02 19:05] STATUS: done
+[2026-10-02 19:05] NOTES: Root cause: typing display name rebuilt WS session each keystroke (token in roomKey). Fixed stable userId + join-time token; name updates awareness only.
+[2026-10-02 21:02] TASK: Fix whitespace click + double-click in tags
+[2026-10-02 21:02] STATUS: done
+[2026-10-02 21:02] NOTES: Whitespace clicks map to end-of-line/end-of-content; double-click inside {tags} selects whole tag.
+[2026-10-03 00:35] TASK: Fix double-click word highlight mismatch
+[2026-10-03 00:35] STATUS: editing
+[2026-10-03 00:35] NOTES: Word boundaries treated '.' as word char (World. selected). Hyperlink spans skipped for selection rects (firstChild is <a>). Fixing findWordBoundaries + getSpanTextNode.
+[2026-10-03 00:40] STATUS: testing
+[2026-10-03 00:40] NOTES: typecheck passed. Browser verify: double-click World. now highlights World only (not World.). don't selects full word + trailing space.
+[2026-10-03 00:40] STATUS: done
+[2026-10-03 00:42] TASK: Restore remote user initials on carets
+[2026-10-03 00:42] STATUS: done
+[2026-10-03 00:42] NOTES: getCaretFromDom skipped hyperlink/nested text (firstChild check) so remote carets+initials disappeared. Now uses getCaretPositionFromDom+getSpanTextNode; overlay overflow visible so labels at -16px aren't clipped.
+[2026-10-03 00:50] TASK: Fix New Comment button missing in collab mode
+[2026-10-03 00:50] STATUS: done
+[2026-10-03 00:50] NOTES: Awareness meta-only txs rebuilt selectionRects every tick, resetting SelectionCommentButton ready gate. Skip overlay updates when !docChanged && !selectionSet; button effect depends on hasRects not rect identity. Verified: float btn + draft open under collab.
+[2026-10-03 13:55] TASK: Keep word highlight while adding comment in collab
+[2026-10-03 13:55] STATUS: done
+[2026-10-03 13:55] NOTES: Pinned draft range keeps selectionRects painted when PM selection collapses (composer focus). Re-select range after submitDraft. Re-measure after balloon page-shift.
+[2026-10-03 14:00] TASK: Fix max update depth when adding comment
+[2026-10-03 14:00] STATUS: done
+[2026-10-03 14:00] NOTES: Pinned-range effect called updateSelectionOverlay (parent notify + setState) in a loop. Now paints rects directly via rAF; pin read from ref; draft object passed by stable state ref.
+
+[2026-10-03 14:03] TASK: Sync comment bodies over Yjs for peers
+[2026-10-03 14:03] STATUS: editing
+[2026-10-03 14:03] NOTES: Wiring useReview mutations + DocxEditor collaborationSession prop
+[2026-10-03 14:06] STATUS: testing
+[2026-10-03 14:06] NOTES: typecheck passed; peer tab shows balloon text from Y.Map comments
+[2026-10-03 14:06] STATUS: done
+[2026-10-03 14:06] NOTES: Comments sync via Y.Map — peer sees author+body not just highlight
+[2026-10-03 14:06] TASK: Persist comments in OOXML Word structure
+[2026-10-03 14:06] STATUS: starting
+[2026-10-03 14:06] NOTES: Ensure collab comments use OOXML Comment model and survive save/export to Word
+[2026-10-03 14:07] STATUS: researching
+[2026-10-03 14:07] NOTES: Yjs SharedCommentRecord flattens to plain text; will store full OOXML Comment (content: Paragraph[]) so save writes proper comments.xml
+[2026-10-03 14:08] STATUS: testing
+[2026-10-03 14:08] NOTES: typecheck passed after OOXML Comment in Yjs + withComments on save/getDocument/onChange
+[2026-10-03 14:08] STATUS: done
+[2026-10-03 14:08] NOTES: Collab comments store full Paragraph[] OOXML; File Save writes comments.xml + commentRange markers
+[2026-10-03 14:09] TASK: Use w:tag for content controls like Word
+[2026-10-03 14:09] STATUS: starting
+[2026-10-03 14:09] NOTES: Audit SDT/tag create+serialize path for OOXML w:tag fidelity
+[2026-10-03 14:09] STATUS: researching
+[2026-10-03 14:09] NOTES: SDT serialize already emits w:tag when attrs.tag set; insertControlNow and alias-only forms can leave tag empty so w:tag is omitted
+[2026-10-03 14:10] STATUS: editing
+[2026-10-03 14:10] NOTES: Normalizing SDT attrs so w:tag is always set; fix block serializer escape; Tag form requires/derives tag
+[2026-10-03 14:11] STATUS: testing
+[2026-10-03 14:11] NOTES: typecheck passed; insert/update always assign w:tag; Title auto-fills Tag slug
+[2026-10-03 14:11] STATUS: done
+[2026-10-03 14:11] NOTES: Word tags now round-trip with w:alias + w:tag like Developer Properties
+[2026-10-03 14:19] TASK: Fix header/footer text in print mode
+[2026-10-03 14:19] STATUS: starting
+[2026-10-03 14:19] NOTES: Investigating print path for header/footer rendering
+[2026-10-03 14:19] STATUS: editing
+[2026-10-03 14:19] NOTES: Print clones pages without editor CSS, so layout-hf-label \"Header\"/\"Footer\" show. Removing labels + hiding chrome in print CSS.
+[2026-10-03 14:20] STATUS: testing
+[2026-10-03 14:20] NOTES: typecheck passed; print strips layout-hf-label and empty HF zones
+[2026-10-03 14:20] STATUS: done
+[2026-10-03 14:20] NOTES: Print no longer shows literal Header/Footer editor labels
+[2026-10-03 14:26] TASK: Comments button toggles document balloons not sidebar
+[2026-10-03 14:26] STATUS: starting
+[2026-10-03 14:26] NOTES: Finding Comments ribbon button handler
+[2026-10-03 14:27] STATUS: done
+[2026-10-03 14:27] NOTES: Top Comments button toggles showComments (balloons) instead of reviewing pane
+[2026-10-03 19:46] TASK: Drop-in DecidendiEditor React component
+[2026-10-03 19:46] STATUS: done
+[2026-10-03 19:46] NOTES: Added DecidendiEditor with source + collaboration shorthand; exported from package; README updated
+[2026-10-03 19:47] TASK: Rename Decidendi to DocXSafe
+[2026-10-03 19:47] STATUS: done
+[2026-10-03 19:47] NOTES: Package docxsafe-editor, DocXSafeEditor component, demo/README/examples updated
+[2026-10-03 23:42] TASK: Fix cursor click on empty lines
+[2026-10-03 23:42] STATUS: starting
+[2026-10-03 23:42] NOTES: Investigating click-to-position for empty paragraphs
+[2026-10-03 23:43] STATUS: testing
+[2026-10-03 23:43] NOTES: typecheck passed; empty-line clicks map to pmStart+1; empty-run fills line width
+[2026-10-03 23:43] STATUS: done
+[2026-10-03 23:44] TASK: SDT labels + double-click select tag content
+[2026-10-03 23:44] STATUS: starting
+[2026-10-03 23:44] NOTES: Exploring SDT paint, double-click, and content-control UI
+[2026-10-03 23:44] STATUS: editing
+[2026-10-03 23:44] NOTES: Adding findSdtRangeAt + Word-style SDT top label; double-click selects SDT content
+
+[2026-10-03 23:46] TASK: SDT labels + double-click select tag content
+[2026-10-03 23:46] STATUS: editing
+[2026-10-03 23:46] NOTES: CSS ::before top label; findSdtContentRangeAt; PagedEditor dblclick prefers SDT; tab runs get CC class
+[2026-10-03 23:47] STATUS: testing
+[2026-10-03 23:47] NOTES: yarn typecheck passed
+[2026-10-03 23:47] STATUS: done
+[2026-10-03 23:47] NOTES: SDT top labels via CSS; dblclick selects full tag content via findSdtContentRangeAt

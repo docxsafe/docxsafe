@@ -1,4 +1,4 @@
-# Ralph Loop — Decidendi Editor
+# Ralph Loop — DocXSafe Editor
 
 ## Your job
 
@@ -295,7 +295,7 @@ bun run typecheck && npx playwright test --timeout=60000 --workers=4
 
 ## Project Context
 
-Minimal Bun + React (TSX) app for Decidendi:
+Minimal Bun + React (TSX) app for DocXSafe:
 
 1. **Display DOCX** — render with full WYSIWYG fidelity per ECMA-376 spec
 2. **Insert docxtemplater variables** — `{variable}` mappings with live preview (standard docxtemplater syntax)

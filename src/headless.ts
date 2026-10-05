@@ -6,8 +6,8 @@
  *
  * @example
  * ```ts
- * import { DocumentAgent, parseDocx, pluginRegistry } from 'decidendi-editor/headless';
- * import { docxtemplaterPlugin } from 'decidendi-editor/core-plugins';
+ * import { DocumentAgent, parseDocx, pluginRegistry } from 'docxsafe-editor/headless';
+ * import { docxtemplaterPlugin } from 'docxsafe-editor/core-plugins';
  *
  * // Register plugins
  * pluginRegistry.register(docxtemplaterPlugin);

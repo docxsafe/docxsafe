@@ -1,10 +1,10 @@
 /**
- * Collaboration types — Word-style multi-user editing via Yjs + y-webrtc
+ * Collaboration types — Word-style multi-user editing via Yjs + WebSocket
  */
 
 import type * as Y from 'yjs';
 import type { Awareness } from 'y-protocols/awareness';
-import type { WebrtcProvider } from 'y-webrtc';
+import type { WebsocketProvider } from 'y-websocket';
 
 /** Identity shown on remote carets / presence chips */
 export interface CollaborationUser {
@@ -16,25 +16,43 @@ export interface CollaborationUser {
   id?: string;
 }
 
-/** Options for starting a P2P collaboration room */
+/** Options for starting a WebSocket collaboration room */
 export interface CollaborationOptions {
   /**
-   * Shared room id. Two browsers that join the same room sync the document
-   * over WebRTC (plus BroadcastChannel for same-browser tabs).
+   * Shared room id. Prefer deterministic ids from
+   * `buildRoomId({ tenantId, matterId, documentId })`.
    */
   roomId: string;
   /** Local user shown to peers */
   user: CollaborationUser;
   /**
-   * Optional room password — encrypts signaling traffic so public signaling
-   * servers cannot read WebRTC offer/answer payloads.
+   * Collaboration server base URL (no trailing room path).
+   * Default: same-origin `/collab-ws` (Vite proxies to port 1234).
    */
-  password?: string;
-  /** Override default public y-webrtc signaling servers */
-  signaling?: string[];
+  websocketUrl?: string;
+  /**
+   * Short-lived auth token for the server.
+   * Default: `demo:<userId>:<name>` for local demos.
+   */
+  token?: string;
   /** Y.XmlFragment field name (default: `prosemirror`) */
   fragmentField?: string;
-  /** Max WebRTC peer connections (default: provider default ~20–35) */
+  /**
+   * Disable BroadcastChannel (default true) so sync always uses the server —
+   * required for different Chrome profiles / browsers.
+   */
+  disableBc?: boolean;
+  /**
+   * @deprecated WebRTC signaling is no longer used. Kept for API compatibility.
+   */
+  signaling?: string[];
+  /**
+   * @deprecated WebRTC password is no longer used.
+   */
+  password?: string;
+  /**
+   * @deprecated WebRTC maxConns is no longer used.
+   */
   maxConns?: number;
 }
 
@@ -45,12 +63,12 @@ export interface CollaborationAwarenessUser {
   id: string;
 }
 
-/** Live collaboration session (Y.Doc + WebRTC provider + fragment) */
+/** Live collaboration session (Y.Doc + WebSocket provider + fragment) */
 export interface CollaborationSession {
   /** Shared Yjs document */
   doc: Y.Doc;
-  /** WebRTC provider (signaling + peer connections) */
-  provider: WebrtcProvider;
+  /** WebSocket provider */
+  provider: WebsocketProvider;
   /** Awareness channel (cursors / presence) */
   awareness: Awareness;
   /** ProseMirror-bound XML fragment */
@@ -59,7 +77,7 @@ export interface CollaborationSession {
   user: CollaborationUser;
   /** Room id */
   roomId: string;
-  /** Whether the provider reports a connection to signaling */
+  /** Whether the provider reports a connection to the server */
   readonly connected: boolean;
   /** Update local awareness user fields */
   setUser(user: Partial<CollaborationUser>): void;

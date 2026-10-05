@@ -13,13 +13,13 @@ export default defineConfig({
   server: {
     port: 5173,
     open: false,
-    // Proxy y-webrtc signaling so the browser can reach it same-origin.
-    // Run `npm run signaling` (port 4444) alongside the demo.
+    // Proxy collaboration WebSocket server (npm run collaboration:server → :1234)
     proxy: {
-      '/signaling': {
-        target: 'http://localhost:4444',
+      '/collab-ws': {
+        target: 'http://localhost:1234',
         changeOrigin: true,
         ws: true,
+        rewrite: (path) => path.replace(/^\/collab-ws/, ''),
       },
     },
   },

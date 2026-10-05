@@ -924,9 +924,9 @@ export type SdtLock = 'sdtLocked' | 'contentLocked' | 'sdtContentLocked' | 'unlo
 export interface SdtProperties {
   /** SDT type */
   sdtType: SdtType;
-  /** Alias (friendly name) */
+  /** Alias / Title (w:alias) — friendly name shown in Word */
   alias?: string;
-  /** Tag (developer identifier) */
+  /** Tag (w:tag) — developer identifier; required for Word binding / merge */
   tag?: string;
   /** Lock content editing / control deletion */
   lock?: SdtLock;
@@ -940,6 +940,43 @@ export interface SdtProperties {
   listItems?: { displayText: string; value: string }[];
   /** Checkbox checked state */
   checked?: boolean;
+}
+
+/**
+ * Derive a Word-style w:tag value from a Title (w:alias).
+ * e.g. "Client name" → "client_name"
+ */
+export function aliasToWordTag(alias: string): string {
+  const slug = alias
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  return slug || 'tag';
+}
+
+/**
+ * Ensure content-control attrs have a non-empty w:tag before insert/update.
+ * Prefer explicit tag; otherwise derive from alias; otherwise allocate tag_N.
+ */
+export function normalizeContentControlTagAttrs(
+  attrs: { tag?: string | null; alias?: string | null; placeholder?: string },
+  occupiedTags: Iterable<string | null | undefined> = []
+): { tag: string; alias: string } {
+  const alias = (attrs.alias ?? '').trim();
+  let tag = (attrs.tag ?? '').trim();
+  if (!tag && alias) tag = aliasToWordTag(alias);
+
+  if (!tag) {
+    const used = new Set(
+      [...occupiedTags].map((t) => (t ?? '').trim().toLowerCase()).filter(Boolean)
+    );
+    let n = 1;
+    while (used.has(`tag_${n}`)) n += 1;
+    tag = `tag_${n}`;
+  }
+
+  return { tag, alias };
 }
 
 /** Word Properties dialog flags ↔ OOXML lock value */

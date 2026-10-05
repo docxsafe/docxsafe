@@ -12,13 +12,9 @@
 import './styles.css';
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
-import {
-  DocxEditor,
-  type DocxEditorRef,
-  createEmptyDocument,
-  type Document,
-} from '../src/index';
+import { DocxEditor, type DocxEditorRef, createEmptyDocument, type Document } from '../src/index';
 import { useCollaboration, colorForUser } from '../src/collaboration';
+import { buildRoomId } from '../src/collaborative-docs/roomId';
 
 // ============================================================================
 // STYLES
@@ -100,49 +96,65 @@ function Demo() {
   const [fileName, setFileName] = useState<string>('Untitled.docx');
   const [status, setStatus] = useState<string>('');
 
-  // Collaboration: File → Open a document, then turn Collaborate on.
-  // Share the same room id in a second tab/window to co-edit.
-  const [roomId, setRoomId] = useState('decidendi-demo-room');
+  // Collaboration via WebSocket server (`npm run collaboration:server`).
+  // Works across Chrome profiles/browsers — not limited to BroadcastChannel.
+  const [roomId, setRoomId] = useState('demo-document');
   /** Room actually joined — only changes when Collaborate is toggled (or Rejoin). */
   const [activeRoom, setActiveRoom] = useState<string | null>(null);
-  const [userName, setUserName] = useState(
-    () => `User ${Math.floor(Math.random() * 90 + 10)}`
-  );
+  // Stable id for the tab — must NOT change when typing the display name
+  const [userId] = useState(() => `user-${Math.random().toString(36).slice(2, 9)}`);
+  const [userName, setUserName] = useState(() => `User ${Math.floor(Math.random() * 90 + 10)}`);
   const collabUser = useMemo(
-    () => ({ name: userName, color: colorForUser(userName) }),
-    [userName]
+    () => ({ id: userId, name: userName, color: colorForUser(userId) }),
+    [userId, userName]
   );
-  const signaling = useMemo(() => {
+  const websocketUrl = useMemo(() => {
     const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    // Vite proxies `/signaling` → local `npm run signaling` (port 4444)
-    return [
-      `${proto}://${window.location.host}/signaling`,
-      'ws://localhost:4444',
-      'wss://y-webrtc-eu.fly.dev',
-    ];
+    // Vite proxies `/collab-ws` → ws://localhost:1234
+    return `${proto}://${window.location.host}/collab-ws`;
   }, []);
 
+  // Auth token frozen at join time (stable userId). Renaming only updates awareness.
+  const [joinToken, setJoinToken] = useState<string | null>(null);
+
   const collab = useCollaboration(
-    activeRoom
+    activeRoom && joinToken
       ? {
           roomId: activeRoom,
           user: collabUser,
-          signaling,
+          websocketUrl,
+          token: joinToken,
         }
       : null
   );
 
   const collabEnabled = activeRoom != null;
-  const joinCollab = useCallback((enabled: boolean) => {
-    if (enabled) {
-      setActiveRoom(roomId.trim() || 'decidendi-demo-room');
-    } else {
-      setActiveRoom(null);
-    }
-  }, [roomId]);
+  const resolveRoomId = useCallback((raw: string) => {
+    const id = raw.trim() || 'demo-document';
+    // Allow pasting a full tenant:… room id, otherwise build a demo room
+    if (id.startsWith('tenant:')) return id;
+    return buildRoomId({
+      tenantId: 'demo',
+      matterId: 'demo-matter',
+      documentId: id,
+    });
+  }, []);
+  const joinCollab = useCallback(
+    (enabled: boolean) => {
+      if (enabled) {
+        setJoinToken(`demo:${userId}:${encodeURIComponent(userName)}`);
+        setActiveRoom(resolveRoomId(roomId));
+      } else {
+        setJoinToken(null);
+        setActiveRoom(null);
+      }
+    },
+    [roomId, resolveRoomId, userId, userName]
+  );
   const rejoinRoom = useCallback(() => {
-    setActiveRoom(roomId.trim() || 'decidendi-demo-room');
-  }, [roomId]);
+    setJoinToken(`demo:${userId}:${encodeURIComponent(userName)}`);
+    setActiveRoom(resolveRoomId(roomId));
+  }, [roomId, resolveRoomId, userId, userName]);
 
   const handleDocumentChange = useCallback((_doc: Document) => {
     // no-op (disable noisy logging)
@@ -162,12 +174,12 @@ function Demo() {
       <header style={styles.header}>
         <div style={styles.headerLeft}>
           <a
-            href="https://github.com/decidendi/decidendi-editor"
+            href="https://github.com/docxsafe/docxsafe-editor"
             target="_blank"
             rel="noopener noreferrer"
             style={styles.titleLink}
           >
-            <h1 style={styles.title}>Decidendi Editor</h1>
+            <h1 style={styles.title}>DocXSafe Editor</h1>
           </a>
           {fileName && <span style={styles.fileName}>{fileName}</span>}
         </div>
@@ -232,9 +244,7 @@ function Demo() {
           onNew={() => setFileName('Document1.docx')}
           onOpen={(file) => setFileName(file.name)}
           collaboration={
-            collab.session
-              ? { session: collab.session, user: collab.session.user }
-              : undefined
+            collab.session ? { session: collab.session, user: collab.session.user } : undefined
           }
         />
       </main>

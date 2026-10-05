@@ -1,9 +1,13 @@
 /**
- * Collaboration session — Y.Doc + y-webrtc room for two (or more) editors.
+ * Collaboration session — Y.Doc + WebSocket room (y-websocket).
+ *
+ * Cross-profile / cross-browser sync goes through the collaboration server
+ * (`npm run collaboration:server`). Same-tab BroadcastChannel is disabled by
+ * default so the server is always the source of truth.
  */
 
 import * as Y from 'yjs';
-import { WebrtcProvider } from 'y-webrtc';
+import { WebsocketProvider } from 'y-websocket';
 import type { Awareness } from 'y-protocols/awareness';
 
 import { colorForUser, randomUserId } from './colors';
@@ -31,16 +35,23 @@ function readPeer(state: Record<string, unknown> | undefined): CollaborationAwar
   };
 }
 
+function defaultWebsocketUrl(): string {
+  if (typeof window === 'undefined') return 'ws://localhost:1234';
+  const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
+  // Vite proxies `/collab-ws` → collaboration server (port 1234)
+  return `${proto}://${window.location.host}/collab-ws`;
+}
+
 /**
- * Create a P2P collaboration room. Peers that join the same `roomId`
- * (and password, if set) share one ProseMirror document over WebRTC.
+ * Create a WebSocket collaboration room. Peers that join the same `roomId`
+ * (with a valid token) share one ProseMirror document via the collab server.
  *
  * @example
  * ```ts
  * const session = createCollaborationSession({
- *   roomId: 'contract-review-42',
+ *   roomId: 'tenant:demo:matter:m1:document:d1',
  *   user: { name: 'Alice', color: '#185abd' },
- *   password: 'optional-secret',
+ *   websocketUrl: 'ws://localhost:1234',
  * });
  * ```
  */
@@ -53,27 +64,18 @@ export function createCollaborationSession(options: CollaborationOptions): Colla
   const userId = user.id as string;
   const roomId = options.roomId.trim();
   const fragmentField = options.fragmentField ?? 'prosemirror';
+  const websocketUrl = (options.websocketUrl ?? defaultWebsocketUrl()).replace(/\/$/, '');
 
   const doc = new Y.Doc();
   const fragment = doc.getXmlFragment(fragmentField);
 
-  // Prefer same-origin `/signaling` (Vite proxies to local y-webrtc-signaling),
-  // then direct localhost, then the public fallback. Same-browser tabs also sync
-  // via BroadcastChannel without signaling.
-  const signaling =
-    options.signaling ??
-    (typeof window !== 'undefined'
-      ? [
-          `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/signaling`,
-          'ws://localhost:4444',
-          'wss://y-webrtc-eu.fly.dev',
-        ]
-      : ['wss://y-webrtc-eu.fly.dev']);
+  // Prefer a stable user id in the token so renaming does not force reconnect.
+  const token = options.token ?? `demo:${userId}:${encodeURIComponent(user.name)}`;
 
-  const provider = new WebrtcProvider(roomId, doc, {
-    password: options.password,
-    signaling,
-    maxConns: options.maxConns,
+  const provider = new WebsocketProvider(websocketUrl, roomId, doc, {
+    params: { token },
+    // Force server sync so different Chrome profiles work
+    disableBc: options.disableBc ?? true,
   });
 
   const awareness: Awareness = provider.awareness;
@@ -92,16 +94,12 @@ export function createCollaborationSession(options: CollaborationOptions): Colla
     for (const cb of peersListeners) cb(peers);
   };
 
-  // y-webrtc status event shape differs across versions — accept either
-  const onStatus = (event: { connected?: boolean; status?: string }) => {
-    connected =
-      typeof event.connected === 'boolean'
-        ? event.connected
-        : event.status === 'connected';
+  const onStatus = (event: { status: string }) => {
+    connected = event.status === 'connected';
     for (const cb of statusListeners) cb(connected);
   };
 
-  provider.on('status', onStatus as (arg0: { connected: boolean }) => void);
+  provider.on('status', onStatus);
   awareness.on('change', emitPeers);
 
   const session: CollaborationSession = {
@@ -112,7 +110,7 @@ export function createCollaborationSession(options: CollaborationOptions): Colla
     user: { ...user, id: userId },
     roomId,
     get connected() {
-      return connected;
+      return connected || provider.wsconnected;
     },
     setUser(patch) {
       const next = normalizeUser({ ...user, ...patch, id: patch.id ?? userId });
@@ -139,17 +137,18 @@ export function createCollaborationSession(options: CollaborationOptions): Colla
     },
     onStatusChange(cb) {
       statusListeners.add(cb);
-      cb(connected);
+      cb(connected || provider.wsconnected);
       return () => {
         statusListeners.delete(cb);
       };
     },
     destroy() {
-      provider.off('status', onStatus as (arg0: { connected: boolean }) => void);
+      provider.off('status', onStatus);
       awareness.off('change', emitPeers);
       statusListeners.clear();
       peersListeners.clear();
       try {
+        provider.disconnect();
         provider.destroy();
       } catch {
         // provider may already be destroyed

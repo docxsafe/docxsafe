@@ -5,12 +5,12 @@
  * Import this file to include all editor styles:
  *
  * ```
- * import 'decidendi-editor/styles';
+ * import 'docxsafe-editor/styles';
  * ```
  *
  * Or import the CSS directly:
  * ```
- * import 'decidendi-editor/styles/editor.css';
+ * import 'docxsafe-editor/styles/editor.css';
  * ```
  */
 

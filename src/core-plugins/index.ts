@@ -10,7 +10,7 @@
  *   pluginRegistry,
  *   docxtemplaterPlugin,
  *   type CorePlugin
- * } from 'decidendi-editor/core-plugins';
+ * } from 'docxsafe-editor/core-plugins';
  *
  * // Register the docxtemplater plugin
  * pluginRegistry.register(docxtemplaterPlugin);

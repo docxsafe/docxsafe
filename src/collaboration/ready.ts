@@ -1,23 +1,22 @@
 /**
  * Wait until a collaboration room is ready to seed local content.
  *
- * Peers may still be empty for a moment after join (BroadcastChannel / WebRTC
- * sync in flight). Seeding too early can overwrite a peer's document with an
- * empty local doc.
+ * Peers may still be empty for a moment after join (WebSocket sync in flight).
+ * Seeding too early can overwrite a peer's document with an empty local doc.
  */
 
 import type { CollaborationSession } from './types';
 
 export interface WhenRoomReadyOptions {
   /**
-   * If no sync event arrives (solo peer), seed after this many ms.
-   * Default 800 — enough for same-browser BroadcastChannel.
+   * If no sync event arrives, seed after this many ms.
+   * Default 800 — enough for a local WebSocket server round-trip.
    */
   timeoutMs?: number;
 }
 
 /**
- * Invoke `cb` once the provider reports synced, or after `timeoutMs` if alone.
+ * Invoke `cb` once the provider reports synced, or after `timeoutMs`.
  * Returns a cancel function.
  */
 export function whenRoomReady(
@@ -30,13 +29,12 @@ export function whenRoomReady(
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
   const provider = session.provider;
 
-  const onSynced = (event: { synced: boolean } | [{ synced: boolean }]) => {
-    const payload = Array.isArray(event) ? event[0] : event;
-    if (payload?.synced) settle();
+  const onSync = (synced: boolean) => {
+    if (synced) settle();
   };
 
   const cleanup = () => {
-    provider.off('synced', onSynced as (arg0: { synced: boolean }) => void);
+    provider.off('sync', onSync);
     if (timeoutId !== undefined) clearTimeout(timeoutId);
   };
 
@@ -47,11 +45,8 @@ export function whenRoomReady(
     cb();
   };
 
-  // Already synced with peers — brief defer so in-flight updates apply first
-  const alreadySynced = Boolean(
-    (provider as unknown as { synced?: boolean }).synced
-  );
-  if (alreadySynced) {
+  // Already synced — brief defer so in-flight updates apply first
+  if (provider.synced) {
     timeoutId = setTimeout(settle, 50);
     return () => {
       settled = true;
@@ -59,8 +54,8 @@ export function whenRoomReady(
     };
   }
 
-  provider.on('synced', onSynced as (arg0: { synced: boolean }) => void);
-  // Solo peer: synced may never fire — seed after timeout
+  provider.on('sync', onSync);
+  // Fallback if sync is slow / solo
   timeoutId = setTimeout(settle, timeoutMs);
 
   return () => {

@@ -27,6 +27,14 @@ import type {
 import { serializeParagraph } from './paragraphSerializer';
 import { serializeTable } from './tableSerializer';
 
+function escapeXml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 // ============================================================================
 // XML NAMESPACES
 // ============================================================================
@@ -572,12 +580,13 @@ function serializeBlockContent(block: BlockContent): string {
   } else if (block.type === 'table') {
     return serializeTable(block);
   } else if (block.type === 'blockSdt') {
-    // Block-level SDT: wrap content in w:sdt
+    // Block-level SDT: wrap content in w:sdt (OOXML w:sdtPr / w:alias / w:tag)
     const contentXml = block.content.map((b) => serializeBlockContent(b)).join('');
     const props = block.properties;
     const prParts: string[] = [];
-    if (props.alias) prParts.push(`<w:alias w:val="${props.alias}"/>`);
-    if (props.tag) prParts.push(`<w:tag w:val="${props.tag}"/>`);
+    if (props.alias) prParts.push(`<w:alias w:val="${escapeXml(props.alias)}"/>`);
+    // Always write w:tag when present — Word Properties "Tag" field
+    if (props.tag) prParts.push(`<w:tag w:val="${escapeXml(props.tag)}"/>`);
     if (props.lock && props.lock !== 'unlocked') {
       prParts.push(`<w:lock w:val="${props.lock}"/>`);
     }

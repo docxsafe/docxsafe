@@ -14,7 +14,13 @@ import type {
   ContentControlInfo,
   RevisionInfo,
 } from '../../prosemirror/commands/review';
-import { sdtLockFlags, sdtLockFromFlags, type SdtLock } from '../../types/content';
+import {
+  sdtLockFlags,
+  sdtLockFromFlags,
+  aliasToWordTag,
+  normalizeContentControlTagAttrs,
+  type SdtLock,
+} from '../../types/content';
 import { commentToText } from '../../docx/serializer/commentSerializer';
 import { cn } from '../../lib/utils';
 
@@ -546,19 +552,29 @@ function TagForm({
       onSubmit={(e) => {
         e.preventDefault();
         if (!alias.trim() && !tag.trim()) return;
+        // Always emit a w:tag (derive from Title when Tag is left blank)
+        const normalized = normalizeContentControlTagAttrs({ alias, tag });
         onSubmit({
-          alias: alias.trim(),
-          tag: tag.trim(),
+          alias: normalized.alias,
+          tag: normalized.tag,
           lock: sdtLockFromFlags(cannotDelete, cannotEditContents) ?? null,
         });
       }}
     >
       <label className="text-xs font-medium text-slate-600">
         Title
+        <span className="ml-1 font-normal text-slate-400">(w:alias)</span>
         <input
           ref={aliasRef}
           value={alias}
-          onChange={(e) => setAlias(e.target.value)}
+          onChange={(e) => {
+            const next = e.target.value;
+            setAlias(next);
+            // Keep Tag in sync while the user is typing Title and hasn't customized Tag
+            if (!tag || tag === aliasToWordTag(alias)) {
+              setTag(next.trim() ? aliasToWordTag(next) : '');
+            }
+          }}
           placeholder="e.g. Client name"
           className={cn(inputClass, 'mt-1 font-normal')}
           data-testid="tag-title-input"
@@ -566,6 +582,7 @@ function TagForm({
       </label>
       <label className="text-xs font-medium text-slate-600">
         Tag
+        <span className="ml-1 font-normal text-slate-400">(w:tag)</span>
         <input
           value={tag}
           onChange={(e) => setTag(e.target.value)}
@@ -573,6 +590,7 @@ function TagForm({
           placeholder="e.g. client_name"
           className={cn(inputClass, 'mt-1 font-mono font-normal')}
           data-testid="tag-tag-input"
+          spellCheck={false}
         />
       </label>
       <fieldset
@@ -629,8 +647,10 @@ function TagsTab(props: ReviewSidebarProps) {
         (tagFormOpen ? (
           <div className="rounded-lg border border-blue-400 bg-white p-3 shadow-md">
             <p className="text-xs text-slate-500 mb-2">
-              Wraps the selected text in a Word content control. With no selection, a placeholder is
-              inserted at the cursor.
+              Wraps the selection in a Word content control (
+              <code className="text-[11px]">w:sdt</code>
+              ). Title maps to <code className="text-[11px]">w:alias</code>, Tag to{' '}
+              <code className="text-[11px]">w:tag</code> — same as Word Developer → Properties.
             </p>
             <TagForm
               submitLabel="Insert tag"
@@ -676,11 +696,11 @@ function TagsTab(props: ReviewSidebarProps) {
             <>
               <div className="flex items-baseline gap-2 flex-wrap">
                 <span className="text-sm font-semibold text-slate-900 truncate">
-                  {cc.alias || 'Untitled'}
+                  {cc.alias || cc.tag || 'Untitled'}
                 </span>
                 {cc.tag && (
                   <code className="text-xs text-blue-700 bg-blue-50 rounded px-1 truncate">
-                    {cc.tag}
+                    w:tag={cc.tag}
                   </code>
                 )}
                 {cc.lock && cc.lock !== 'unlocked' && (

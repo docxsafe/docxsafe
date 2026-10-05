@@ -330,7 +330,9 @@
   border-radius: 6px;
   background: #fff;
   color: #185abd;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(15, 23, 42, 0.02);
+  box-shadow:
+    0 1px 3px rgba(15, 23, 42, 0.12),
+    0 0 0 1px rgba(15, 23, 42, 0.02);
   cursor: pointer;
   /* Only this control captures clicks; the overlay itself is pointer-events: none */
   pointer-events: auto;
@@ -481,9 +483,51 @@
   text-decoration-color: #c62828 !important;
 }
 
+/* Word-style content controls (SDT / Developer tags) */
 .docx-content-control {
+  position: relative;
   background-color: rgba(25, 118, 210, 0.08);
-  box-shadow: inset 0 -1px 0 rgba(25, 118, 210, 0.55);
+  box-shadow:
+    inset 0 0 0 1px rgba(25, 118, 210, 0.45),
+    inset 0 -1px 0 rgba(25, 118, 210, 0.55);
+}
+
+.docx-content-control--start {
+  /* room for the floating title so it doesn't collide with prior text */
+  margin-top: 2px;
+}
+
+.docx-content-control--start[data-sdt-alias]::before,
+.docx-content-control--start:not([data-sdt-alias])[data-sdt-tag]::before {
+  position: absolute;
+  left: 0;
+  top: -13px;
+  z-index: 2;
+  padding: 0 4px;
+  border-radius: 2px 2px 0 0;
+  background: #185abd;
+  color: #fff;
+  font-family: 'Segoe UI', Calibri, sans-serif;
+  font-size: 10px;
+  font-weight: 400;
+  font-style: normal;
+  line-height: 13px;
+  letter-spacing: 0;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+}
+
+.docx-content-control--start[data-sdt-alias]::before {
+  content: attr(data-sdt-alias);
+}
+
+.docx-content-control--start:not([data-sdt-alias])[data-sdt-tag]::before {
+  content: attr(data-sdt-tag);
+}
+
+.docx-content-control--locked {
+  background-color: rgba(25, 118, 210, 0.04);
 }
 
 /* Word-style markup views (class on the editor content wrapper) */
@@ -548,8 +592,9 @@
   /* Light blue fill when a toggle (Bold/Italic/…) is on — icon uses accent color */
   --ribbon-checked: #cce4f7;
   --ribbon-canvas: #e9e9e9;
-  --ribbon-font: 'Segoe UI', 'Segoe UI Web (West European)', -apple-system, BlinkMacSystemFont,
-    system-ui, Roboto, 'Helvetica Neue', sans-serif;
+  --ribbon-font:
+    'Segoe UI', 'Segoe UI Web (West European)', -apple-system, BlinkMacSystemFont, system-ui,
+    Roboto, 'Helvetica Neue', sans-serif;
   position: relative;
 }
 
@@ -795,7 +840,9 @@
   color: var(--ribbon-text);
   font-size: 12px;
   line-height: 1.2;
-  transition: background-color 120ms ease-out, border-color 120ms ease-out;
+  transition:
+    background-color 120ms ease-out,
+    border-color 120ms ease-out;
 }
 
 .ep-ribbon-btn--small {
@@ -926,7 +973,9 @@
   background: #fff;
   border: 1px solid #d1d1d1;
   border-radius: 6px;
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.14), 0 0 2px rgba(0, 0, 0, 0.12);
+  box-shadow:
+    0 8px 16px rgba(0, 0, 0, 0.14),
+    0 0 2px rgba(0, 0, 0, 0.12);
   font-family: var(--ribbon-font);
   color: var(--ribbon-text);
 }
@@ -1170,7 +1219,10 @@
   color: var(--ribbon-text);
   font-size: 13px;
   cursor: pointer;
-  transition: top 160ms ease-out, box-shadow 160ms ease-out, border-color 160ms ease-out;
+  transition:
+    top 160ms ease-out,
+    box-shadow 160ms ease-out,
+    border-color 160ms ease-out;
 }
 
 .ep-balloon.is-active {
@@ -1558,6 +1610,12 @@
   font-size: 12px;
 }
 
+.ep-dialog__hint {
+  font-weight: 400;
+  color: #94a3b8;
+  font-size: 11px;
+}
+
 .ep-dialog__body input[type='text'] {
   display: block;
   width: 100%;
@@ -1835,7 +1893,9 @@
   --chip-text: #8a5300;
   background-color: var(--chip-bg) !important;
   color: var(--chip-text) !important;
-  box-shadow: inset 0 1px 0 var(--chip-border), inset 0 -1px 0 var(--chip-border);
+  box-shadow:
+    inset 0 1px 0 var(--chip-border),
+    inset 0 -1px 0 var(--chip-border);
   text-decoration: none !important;
 }
 
@@ -1846,13 +1906,17 @@
 
 .docx-template-tag.is-open {
   border-radius: 4px 0 0 4px;
-  box-shadow: inset 1px 0 0 var(--chip-border), inset 0 1px 0 var(--chip-border),
+  box-shadow:
+    inset 1px 0 0 var(--chip-border),
+    inset 0 1px 0 var(--chip-border),
     inset 0 -1px 0 var(--chip-border);
 }
 
 .docx-template-tag.is-close {
   border-radius: 0 4px 4px 0;
-  box-shadow: inset -1px 0 0 var(--chip-border), inset 0 1px 0 var(--chip-border),
+  box-shadow:
+    inset -1px 0 0 var(--chip-border),
+    inset 0 1px 0 var(--chip-border),
     inset 0 -1px 0 var(--chip-border);
 }
 

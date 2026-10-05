@@ -244,17 +244,22 @@ export class PointerEventHandler {
     const pmStart = Number(element.dataset.pmStart) || 0;
     const offset = pos - pmStart;
 
-    // Find word boundaries
+    // Unicode-aware word boundaries (letters/digits/apostrophe/hyphen)
+    const isWordChar = (ch: string | undefined) => !!ch && /[\p{L}\p{N}''\-]/u.test(ch);
+
     let start = offset;
     let end = offset;
 
-    // Go back to start of word
-    while (start > 0 && /\w/.test(text[start - 1])) {
+    while (start > 0 && isWordChar(text[start - 1])) {
       start--;
     }
 
-    // Go forward to end of word
-    while (end < text.length && /\w/.test(text[end])) {
+    while (end < text.length && isWordChar(text[end])) {
+      end++;
+    }
+
+    // Word includes trailing space on double-click (Word behavior)
+    if (end < text.length && text[end] === ' ' && end > start && isWordChar(text[end - 1])) {
       end++;
     }
 

@@ -25,7 +25,7 @@ import type {
  *
  * @example
  * ```ts
- * import { pluginRegistry, docxtemplaterPlugin } from 'decidendi-editor/core-plugins';
+ * import { pluginRegistry, docxtemplaterPlugin } from 'docxsafe-editor/core-plugins';
  *
  * // Register plugins
  * pluginRegistry.register(docxtemplaterPlugin);

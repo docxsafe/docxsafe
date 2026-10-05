@@ -1,5 +1,5 @@
 /**
- * Type exports for decidendi-editor
+ * Type exports for docxsafe-editor
  *
  * Re-exports all public TypeScript types from the split type modules.
  */

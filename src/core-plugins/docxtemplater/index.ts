@@ -8,8 +8,8 @@
  *
  * @example
  * ```ts
- * import { pluginRegistry } from 'decidendi-editor/core-plugins';
- * import { docxtemplaterPlugin } from 'decidendi-editor/core-plugins/docxtemplater';
+ * import { pluginRegistry } from 'docxsafe-editor/core-plugins';
+ * import { docxtemplaterPlugin } from 'docxsafe-editor/core-plugins/docxtemplater';
  *
  * pluginRegistry.register(docxtemplaterPlugin);
  * ```

@@ -460,6 +460,13 @@
   dependencies:
     "@types/node" "*"
 
+"@types/ws@^8.18.2":
+  version "8.18.2"
+  resolved "https://registry.npmjs.org/@types/ws/-/ws-8.18.2.tgz"
+  integrity sha512-67MQl+fpWKVTT1NYdnmo3U4sc/xPo/zQBncVnI74qmQa0z/b+1g6iYqNmGCPbxO+zz2aklb08a0oHfegiVd0/w==
+  dependencies:
+    "@types/node" "*"
+
 "@typescript-eslint/eslint-plugin@^8.54.0":
   version "8.71.0"
   resolved "https://registry.npmjs.org/@typescript-eslint/eslint-plugin/-/eslint-plugin-8.71.0.tgz"
@@ -1339,6 +1346,38 @@ esbuild@^0.27.0, esbuild@>=0.18:
     "@esbuild/win32-ia32" "0.27.7"
     "@esbuild/win32-x64" "0.27.7"
 
+esbuild@~0.28.0:
+  version "0.28.2"
+  resolved "https://registry.npmjs.org/esbuild/-/esbuild-0.28.2.tgz"
+  integrity sha512-HKVLS8dvII+xoKW9kmqxbRKrnWEXfJJr/FZhhJmiqIB0e053QNYFqOBouTMO/k5sID4MvCiUCvv8b9M4h32wIA==
+  optionalDependencies:
+    "@esbuild/aix-ppc64" "0.28.2"
+    "@esbuild/android-arm" "0.28.2"
+    "@esbuild/android-arm64" "0.28.2"
+    "@esbuild/android-x64" "0.28.2"
+    "@esbuild/darwin-arm64" "0.28.2"
+    "@esbuild/darwin-x64" "0.28.2"
+    "@esbuild/freebsd-arm64" "0.28.2"
+    "@esbuild/freebsd-x64" "0.28.2"
+    "@esbuild/linux-arm" "0.28.2"
+    "@esbuild/linux-arm64" "0.28.2"
+    "@esbuild/linux-ia32" "0.28.2"
+    "@esbuild/linux-loong64" "0.28.2"
+    "@esbuild/linux-mips64el" "0.28.2"
+    "@esbuild/linux-ppc64" "0.28.2"
+    "@esbuild/linux-riscv64" "0.28.2"
+    "@esbuild/linux-s390x" "0.28.2"
+    "@esbuild/linux-x64" "0.28.2"
+    "@esbuild/netbsd-arm64" "0.28.2"
+    "@esbuild/netbsd-x64" "0.28.2"
+    "@esbuild/openbsd-arm64" "0.28.2"
+    "@esbuild/openbsd-x64" "0.28.2"
+    "@esbuild/openharmony-arm64" "0.28.2"
+    "@esbuild/sunos-x64" "0.28.2"
+    "@esbuild/win32-arm64" "0.28.2"
+    "@esbuild/win32-ia32" "0.28.2"
+    "@esbuild/win32-x64" "0.28.2"
+
 escalade@^3.2.0:
   version "3.2.0"
   resolved "https://registry.npmjs.org/escalade/-/escalade-3.2.0.tgz"
@@ -2128,7 +2167,7 @@ levn@^0.4.1:
     prelude-ls "^1.2.1"
     type-check "~0.4.0"
 
-lib0@^0.2.109, lib0@^0.2.42, lib0@^0.2.85, lib0@^0.2.99:
+lib0@^0.2.102, lib0@^0.2.109, lib0@^0.2.42, lib0@^0.2.85, lib0@^0.2.99:
   version "0.2.119"
   resolved "https://registry.npmjs.org/lib0/-/lib0-0.2.119.tgz"
   integrity sha512-vh+TiejVy8Xm+hCdnRfn9BthGNvNUZdEXltNjVZL3TzRIKP3s1lnQh8pWd/Q0wCgY0FPAGVVjFF4ZiHUV3LFgA==
@@ -3330,6 +3369,15 @@ tsup@^8.0.1:
     tinyglobby "^0.2.11"
     tree-kill "^1.2.2"
 
+tsx@^4.23.15, tsx@^4.8.1:
+  version "4.23.15"
+  resolved "https://registry.npmjs.org/tsx/-/tsx-4.23.15.tgz"
+  integrity sha512-Yiex1Ovn8z2xPpOWckIiysV1SSyRMY9BkLF++q0yKiDxCqRhosKfMg3janKkiLBwZ5c/YryloKwGZcrEmtwxKw==
+  dependencies:
+    esbuild "~0.28.0"
+  optionalDependencies:
+    fsevents "~2.3.3"
+
 type-check@^0.4.0, type-check@~0.4.0:
   version "0.4.0"
   resolved "https://registry.npmjs.org/type-check/-/type-check-0.4.0.tgz"
@@ -3529,7 +3577,7 @@ wrap-ansi@^9.0.0:
     string-width "^7.0.0"
     strip-ansi "^7.1.0"
 
-ws@^8.14.2:
+ws@^8.14.2, ws@^8.22.0:
   version "8.22.0"
   resolved "https://registry.npmjs.org/ws/-/ws-8.22.0.tgz"
   integrity sha512-Ydggc987+RO0AnWtZ/7Wq9FtNvcrL1b/RO0ud9mWjUPgDrsAAwQSF51sm2hm1XofbU/4jkpGEsLFsZZxU+1DOg==
@@ -3548,7 +3596,7 @@ y-prosemirror@^1.3.7:
   dependencies:
     lib0 "^0.2.109"
 
-y-protocols@^1.0.1, y-protocols@^1.0.6, y-protocols@^1.0.7:
+y-protocols@^1.0.1, y-protocols@^1.0.5, y-protocols@^1.0.6, y-protocols@^1.0.7:
   version "1.0.7"
   resolved "https://registry.npmjs.org/y-protocols/-/y-protocols-1.0.7.tgz"
   integrity sha512-YSVsLoXxO67J6eE/nV4AtFtT3QEotZf5sK5BHxFBXso7VDUT3Tx07IfA6hsu5Q5OmBdMkQVmFZ9QOA7fikWvnw==
@@ -3566,6 +3614,14 @@ y-webrtc@^10.3.0:
   optionalDependencies:
     ws "^8.14.2"
 
+y-websocket@^3.1.0:
+  version "3.1.0"
+  resolved "https://registry.npmjs.org/y-websocket/-/y-websocket-3.1.0.tgz"
+  integrity sha512-ZNzwH84Ysxv7zjpFNZHjTJvrBZgcAqMljTe+6zrWciAML9LQ18aVylyPNH9faxCXqEOV8I0JY4TGtrIHFX+Xwg==
+  dependencies:
+    lib0 "^0.2.102"
+    y-protocols "^1.0.5"
+
 yallist@^3.0.2:
   version "3.1.1"
   resolved "https://registry.npmjs.org/yallist/-/yallist-3.1.1.tgz"
@@ -3576,7 +3632,7 @@ yaml@^2.4.2, yaml@^2.8.2:
   resolved "https://registry.npmjs.org/yaml/-/yaml-2.9.1.tgz"
   integrity sha512-3NxN8+78OdzbT7C/WjGsyfPAtJaN3FNDsWxv7Y7mcDsT/oOmgW8BpyQQFFBnvZE3j9Y2Sdz1ULFLezL7Eb2yFw==
 
-yjs@^13.0.0, yjs@^13.5.38, yjs@^13.6.33, yjs@^13.6.8:
+yjs@^13.0.0, yjs@^13.5.38, yjs@^13.5.6, yjs@^13.6.33, yjs@^13.6.8:
   version "13.6.33"
   resolved "https://registry.npmjs.org/yjs/-/yjs-13.6.33.tgz"
   integrity sha512-q/UYvr1gOk4XII+Cu1CW2dINjYqJJFifTzogEaIARznrvX7uOlHsdTEXcnOBMuIsrCGEEKdNxi74kyMLZlKVfw==

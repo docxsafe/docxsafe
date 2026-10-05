@@ -5,8 +5,8 @@ The editor has a plugin system that lets you add UI panels, document overlays, P
 ## Quick Start
 
 ```tsx
-import { DocxEditor, PluginHost, templatePlugin } from 'decidendi-editor';
-import 'decidendi-editor/styles.css';
+import { DocxEditor, PluginHost, templatePlugin } from 'docxsafe-editor';
+import 'docxsafe-editor/styles.css';
 
 function Editor({ file }: { file: ArrayBuffer }) {
   return (
@@ -71,7 +71,7 @@ interface EditorPlugin<TState = any> {
 A plugin that logs every document change:
 
 ```typescript
-import type { EditorPlugin } from 'decidendi-editor';
+import type { EditorPlugin } from 'docxsafe-editor';
 
 const loggerPlugin: EditorPlugin = {
   id: 'logger',
@@ -86,7 +86,7 @@ const loggerPlugin: EditorPlugin = {
 ### Plugin with a Panel
 
 ```typescript
-import type { EditorPlugin, PluginPanelProps } from 'decidendi-editor';
+import type { EditorPlugin, PluginPanelProps } from 'docxsafe-editor';
 
 interface WordCountState {
   words: number;
@@ -128,7 +128,7 @@ const wordCountPlugin: EditorPlugin<WordCountState> = {
 Overlays render on top of the document pages. Use the `RenderedDomContext` to map ProseMirror positions to pixel coordinates.
 
 ```typescript
-import type { EditorPlugin, RenderedDomContext } from 'decidendi-editor';
+import type { EditorPlugin, RenderedDomContext } from 'docxsafe-editor';
 
 const highlightPlugin: EditorPlugin<number[]> = {
   id: 'highlight',
@@ -167,7 +167,7 @@ const highlightPlugin: EditorPlugin<number[]> = {
 ```typescript
 import { Plugin, PluginKey } from 'prosemirror-state';
 import { Decoration, DecorationSet } from 'prosemirror-view';
-import type { EditorPlugin } from 'decidendi-editor';
+import type { EditorPlugin } from 'docxsafe-editor';
 
 const pluginKey = new PluginKey('my-decorations');
 
@@ -281,7 +281,7 @@ hostRef.current?.refreshPluginStates();
 Syntax highlighting and annotation panel for [docxtemplater](https://docxtemplater.com) template tags.
 
 ```tsx
-import { DocxEditor, PluginHost, templatePlugin } from 'decidendi-editor';
+import { DocxEditor, PluginHost, templatePlugin } from 'docxsafe-editor';
 
 // Default configuration
 <PluginHost plugins={[templatePlugin]}>
@@ -289,7 +289,7 @@ import { DocxEditor, PluginHost, templatePlugin } from 'decidendi-editor';
 </PluginHost>;
 
 // Custom configuration
-import { createTemplatePlugin } from 'decidendi-editor';
+import { createTemplatePlugin } from 'docxsafe-editor';
 
 const myPlugin = createTemplatePlugin({
   panelPosition: 'left',

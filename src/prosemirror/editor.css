@@ -640,6 +640,29 @@
   display: block;
 }
 
+/* Never show editor HF chrome when printing the main window (popup-blocked fallback) */
+@media print {
+  .layout-hf-label,
+  .selection-overlay,
+  .remote-caret,
+  .paged-editor__comment-btn,
+  .ep-balloons {
+    display: none !important;
+  }
+
+  .layout-page-header,
+  .layout-page-footer {
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .layout-page-header.is-empty,
+  .layout-page-footer.is-empty {
+    display: none !important;
+  }
+}
+
 /* Empty zones stay hoverable but don't show stale text */
 .layout-page-header.is-empty .layout-hf-content,
 .layout-page-footer.is-empty .layout-hf-content {

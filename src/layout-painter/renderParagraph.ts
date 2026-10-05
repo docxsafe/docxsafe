@@ -115,7 +115,10 @@ function applyRunStyles(element: HTMLElement, run: TextRun | TabRun): void {
   // Font properties
   if (run.fontFamily) {
     // Resolve DOCX font name → quoted CSS stack (must match measureContainer.ts)
-    const name = run.fontFamily.split(',')[0].trim().replace(/^["']|["']$/g, '');
+    const name = run.fontFamily
+      .split(',')[0]
+      .trim()
+      .replace(/^["']|["']$/g, '');
     element.style.fontFamily = resolveFontFamily(name).cssFallback;
   }
   if (run.fontSize) {
@@ -216,6 +219,9 @@ function applyReviewAnnotations(element: HTMLElement, run: TextRun | TabRun): vo
       element.dataset.sdtLock = run.contentControl.lock;
       element.classList.add('docx-content-control--locked');
     }
+    if (run.contentControl.isStart) {
+      element.classList.add('docx-content-control--start');
+    }
   }
 }
 
@@ -277,6 +283,7 @@ function renderTabRun(run: TabRun, doc: Document, width: number, leader?: string
   span.style.display = 'inline-block';
   span.style.width = `${width}px`;
 
+  applyReviewAnnotations(span, run);
   applyPmPositions(span, run.pmStart, run.pmEnd);
 
   // Render leader character if specified
@@ -589,7 +596,10 @@ function createTextMeasurer(
   return (text: string, fontSize = 11, fontFamily = 'Calibri') => {
     if (!ctx) return text.length * 7; // Fallback estimate
     // Use same resolver as measureContainer.ts / applyRunStyles
-    const name = fontFamily.split(',')[0].trim().replace(/^["']|["']$/g, '');
+    const name = fontFamily
+      .split(',')[0]
+      .trim()
+      .replace(/^["']|["']$/g, '');
     const cssFont = resolveFontFamily(name).cssFallback;
     // Convert pt to px for canvas (1pt = 96/72 px)
     const fontSizePx = (fontSize * 96) / 72;
@@ -625,11 +635,26 @@ export function renderLine(
   // Get runs for this line
   const runsForLine = sliceRunsForLine(block, line);
 
-  // Handle empty lines
+  // Handle empty lines — Word allows clicking anywhere on the blank line
   if (runsForLine.length === 0) {
     const emptySpan = doc.createElement('span');
     emptySpan.className = `${PARAGRAPH_CLASS_NAMES.run} layout-empty-run`;
     emptySpan.innerHTML = '&nbsp;';
+    // Map to the caret position *inside* the paragraph (pmStart + 1), not the
+    // node boundaries. pmEnd is after the paragraph and jumps the caret away.
+    if (
+      block.pmStart !== undefined &&
+      block.pmEnd !== undefined &&
+      block.pmEnd > block.pmStart + 1
+    ) {
+      const contentPos = block.pmStart + 1;
+      emptySpan.dataset.pmStart = String(contentPos);
+      emptySpan.dataset.pmEnd = String(contentPos);
+    }
+    // Stretch so clicks on the empty line (not just the NBSP glyph) hit this span
+    emptySpan.style.display = 'inline-block';
+    emptySpan.style.minWidth = '100%';
+    emptySpan.style.boxSizing = 'border-box';
     lineEl.appendChild(emptySpan);
     return lineEl;
   }

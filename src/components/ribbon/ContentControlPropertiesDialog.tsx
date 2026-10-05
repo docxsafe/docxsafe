@@ -8,6 +8,8 @@ import { RibbonDialog } from './RibbonDialog';
 import {
   sdtLockFlags,
   sdtLockFromFlags,
+  aliasToWordTag,
+  normalizeContentControlTagAttrs,
   type SdtLock,
 } from '../../types/content';
 
@@ -42,27 +44,34 @@ export function ContentControlPropertiesDialog({
     <RibbonDialog
       title="Content Control Properties"
       onClose={onClose}
-      onSubmit={() =>
+      onSubmit={() => {
+        const normalized = normalizeContentControlTagAttrs({ alias, tag });
         onSave({
-          alias: alias.trim(),
-          tag: tag.trim(),
+          alias: normalized.alias,
+          tag: normalized.tag,
           lock: sdtLockFromFlags(cannotDelete, cannotEditContents) ?? null,
-        })
-      }
+        });
+      }}
       testId="control-properties-dialog"
     >
       <label>
-        Title
+        Title <span className="ep-dialog__hint">(w:alias)</span>
         <input
           type="text"
           value={alias}
-          onChange={(e) => setAlias(e.target.value)}
+          onChange={(e) => {
+            const next = e.target.value;
+            setAlias(next);
+            if (!tag || tag === aliasToWordTag(alias)) {
+              setTag(next.trim() ? aliasToWordTag(next) : '');
+            }
+          }}
           placeholder="e.g. Client name"
           data-testid="tag-title-input"
         />
       </label>
       <label>
-        Tag
+        Tag <span className="ep-dialog__hint">(w:tag)</span>
         <input
           type="text"
           value={tag}

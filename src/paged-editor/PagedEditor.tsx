@@ -27,6 +27,7 @@ import React, {
 import type { CSSProperties } from 'react';
 import { applyTemplateTagChips } from '../layout-bridge/templateTagChips';
 import { findTemplateTags } from '../plugins/template/prosemirror-plugin';
+import { findSdtContentRangeAt } from '../prosemirror/commands/review';
 import type { EditorState, Transaction, Plugin } from 'prosemirror-state';
 import { CellSelection } from 'prosemirror-tables';
 import type { EditorView } from 'prosemirror-view';
@@ -34,10 +35,7 @@ import type { EditorView } from 'prosemirror-view';
 // Internal components
 import { HiddenProseMirror, type HiddenProseMirrorRef } from './HiddenProseMirror';
 import { SelectionOverlay, type RemoteCaretMarker } from './SelectionOverlay';
-import {
-  publishLocalCursor,
-  readRemoteCursors,
-} from '../collaboration/remoteCursors';
+import { publishLocalCursor, readRemoteCursors } from '../collaboration/remoteCursors';
 
 // Layout engine
 import { layoutDocument } from '../layout-engine';
@@ -66,7 +64,12 @@ import {
 } from '../layout-bridge/measuring';
 import { hitTestFragment, hitTestTableCell } from '../layout-bridge/hitTest';
 import { clickToPosition } from '../layout-bridge/clickToPosition';
-import { clickToPositionDom } from '../layout-bridge/clickToPositionDom';
+import {
+  clickToPositionDom,
+  getCaretPositionFromDom,
+  getSpanTextNode,
+} from '../layout-bridge/clickToPositionDom';
+import { findWordBoundaries, isWordCharacter } from '../utils/textSelection';
 import {
   selectionToRects,
   getCaretPosition,
@@ -135,6 +138,12 @@ export interface PagedEditorProps {
   onNewComment?: () => void;
   /** Hide the floating selection comment button (e.g. draft already open). */
   hideSelectionCommentButton?: boolean;
+  /**
+   * Keep this range highlighted on the overlay even if the live PM selection
+   * collapses (e.g. while the comment composer has focus). Used so the word
+   * the user is commenting on stays painted in collab mode.
+   */
+  pinnedSelectionRange?: { from: number; to: number } | null;
   /** External ProseMirror plugins. */
   externalPlugins?: Plugin[];
   /** Extension manager for plugins/schema/commands (optional — falls back to default) */
@@ -997,6 +1006,7 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
       onSelectionChange,
       onNewComment,
       hideSelectionCommentButton = false,
+      pinnedSelectionRange = null,
       externalPlugins = EMPTY_PLUGINS,
       extensionManager,
       collaborationSession = null,
@@ -1022,6 +1032,8 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
     const onSelectionChangeRef = useRef(onSelectionChange);
     const onDocumentChangeRef = useRef(onDocumentChange);
     const onReadyRef = useRef(onReady);
+    const pinnedSelectionRangeRef = useRef(pinnedSelectionRange);
+    pinnedSelectionRangeRef.current = pinnedSelectionRange;
     const onRenderedDomContextReadyRef = useRef(onRenderedDomContextReady);
 
     // Keep refs in sync with latest props
@@ -1244,94 +1256,99 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
       );
       if (!overlay) return null;
 
-      const overlayRect = overlay.getBoundingClientRect();
+      // Shared DOM caret mapper (handles hyperlink-nested text, tabs, empty runs)
+      return getCaretPositionFromDom(
+        pagesContainerRef.current,
+        pmPos,
+        overlay.getBoundingClientRect()
+      );
+    }, []);
 
-      // Find spans with PM position data
-      const spans = pagesContainerRef.current.querySelectorAll('span[data-pm-start][data-pm-end]');
+    /**
+     * Build overlay selection rectangles for a PM range from painted DOM spans.
+     */
+    const collectDomSelectionRects = useCallback(
+      (from: number, to: number): SelectionRect[] => {
+        if (!pagesContainerRef.current || from >= to) return [];
 
-      for (const span of Array.from(spans)) {
-        const spanEl = span as HTMLElement;
-        const pmStart = Number(spanEl.dataset.pmStart);
-        const pmEnd = Number(spanEl.dataset.pmEnd);
+        const overlay = pagesContainerRef.current.parentElement?.querySelector(
+          '[data-testid="selection-overlay"]'
+        );
+        if (!overlay) return [];
 
-        // Special handling for tab spans - use exclusive end to avoid boundary conflicts
-        // Tab at [5,6) means position 6 belongs to the next run, not the tab
-        if (spanEl.classList.contains('layout-run-tab')) {
-          if (pmPos >= pmStart && pmPos < pmEnd) {
+        const overlayRect = overlay.getBoundingClientRect();
+        const domRects: SelectionRect[] = [];
+        const spans = pagesContainerRef.current.querySelectorAll(
+          'span[data-pm-start][data-pm-end]'
+        );
+
+        for (const span of Array.from(spans)) {
+          const spanEl = span as HTMLElement;
+          const pmStart = Number(spanEl.dataset.pmStart);
+          const pmEnd = Number(spanEl.dataset.pmEnd);
+
+          if (pmEnd <= from || pmStart >= to) continue;
+
+          if (spanEl.classList.contains('layout-run-tab')) {
             const spanRect = spanEl.getBoundingClientRect();
             const pageEl = spanEl.closest('.layout-page');
             const pageIndex = pageEl ? Number((pageEl as HTMLElement).dataset.pageNumber) - 1 : 0;
-            const lineEl = spanEl.closest('.layout-line');
-            const lineHeight = lineEl ? (lineEl as HTMLElement).offsetHeight : 16;
-
-            return {
+            domRects.push({
               x: spanRect.left - overlayRect.left,
               y: spanRect.top - overlayRect.top,
-              height: lineHeight,
+              width: spanRect.width,
+              height: spanRect.height,
               pageIndex,
-            };
+            });
+            continue;
           }
-          continue; // Skip to next span
-        }
 
-        // For text runs, use inclusive range
-        if (pmPos >= pmStart && pmPos <= pmEnd && span.firstChild?.nodeType === Node.TEXT_NODE) {
-          const textNode = span.firstChild as Text;
-          const charIndex = Math.min(pmPos - pmStart, textNode.length);
-
-          // Create a range at the exact character position
+          const textNode = getSpanTextNode(spanEl);
+          if (!textNode) continue;
           const ownerDoc = spanEl.ownerDocument;
           if (!ownerDoc) continue;
+
+          const startChar = Math.max(0, from - pmStart);
+          const endChar = Math.min(textNode.length, to - pmStart);
+          if (startChar >= endChar) continue;
+
           const range = ownerDoc.createRange();
-          range.setStart(textNode, charIndex);
-          range.setEnd(textNode, charIndex);
-
-          const rangeRect = range.getBoundingClientRect();
-
-          // Find which page this span is on
-          const pageEl = spanEl.closest('.layout-page');
-          const pageIndex = pageEl ? Number((pageEl as HTMLElement).dataset.pageNumber) - 1 : 0;
-
-          // Get line height from the line element or use default
-          const lineEl = spanEl.closest('.layout-line');
-          const lineHeight = lineEl ? (lineEl as HTMLElement).offsetHeight : 16;
-
-          return {
-            x: rangeRect.left - overlayRect.left,
-            y: rangeRect.top - overlayRect.top,
-            height: lineHeight,
-            pageIndex,
-          };
+          range.setStart(textNode, startChar);
+          range.setEnd(textNode, endChar);
+          const clientRects = range.getClientRects();
+          for (const rect of Array.from(clientRects)) {
+            const pageEl = spanEl.closest('.layout-page');
+            const pageIndex = pageEl ? Number((pageEl as HTMLElement).dataset.pageNumber) - 1 : 0;
+            domRects.push({
+              x: rect.left - overlayRect.left,
+              y: rect.top - overlayRect.top,
+              width: rect.width,
+              height: rect.height,
+              pageIndex,
+            });
+          }
         }
-      }
 
-      // Fallback: try to find position in empty paragraphs (they have empty runs)
-      const emptyRuns = pagesContainerRef.current.querySelectorAll('.layout-empty-run');
-      for (const emptyRun of Array.from(emptyRuns)) {
-        const paragraph = emptyRun.closest('.layout-paragraph') as HTMLElement;
-        if (!paragraph) continue;
+        if (domRects.length > 0) return domRects;
 
-        const pmStart = Number(paragraph.dataset.pmStart);
-        const pmEnd = Number(paragraph.dataset.pmEnd);
-
-        if (pmPos >= pmStart && pmPos <= pmEnd) {
-          const runRect = emptyRun.getBoundingClientRect();
-          const pageEl = paragraph.closest('.layout-page');
-          const pageIndex = pageEl ? Number((pageEl as HTMLElement).dataset.pageNumber) - 1 : 0;
-          const lineEl = emptyRun.closest('.layout-line');
-          const lineHeight = lineEl ? (lineEl as HTMLElement).offsetHeight : 16;
-
-          return {
-            x: runRect.left - overlayRect.left,
-            y: runRect.top - overlayRect.top,
-            height: lineHeight,
-            pageIndex,
-          };
+        // Fallback to layout geometry
+        if (layout && blocks.length > 0) {
+          const firstPage = pagesContainerRef.current.querySelector('.layout-page');
+          if (firstPage) {
+            const pageRect = firstPage.getBoundingClientRect();
+            const pageOffsetX = pageRect.left - overlayRect.left;
+            const pageOffsetY = pageRect.top - overlayRect.top;
+            return selectionToRects(layout, blocks, measures, from, to).map((rect) => ({
+              ...rect,
+              x: rect.x + pageOffsetX,
+              y: rect.y + pageOffsetY,
+            }));
+          }
         }
-      }
-
-      return null;
-    }, []);
+        return [];
+      },
+      [layout, blocks, measures]
+    );
 
     /**
      * Map awareness cursors → visual carets with initials on the paged overlay.
@@ -1423,14 +1440,22 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
 
         if (!layout || blocks.length === 0) return;
 
-        // Collapsed selection - show caret
-        if (from === to) {
-          // Use DOM-based caret positioning for accuracy
+        // Prefer live range selection; if collapsed (common while the comment
+        // composer has focus), keep painting a pinned draft range so the
+        // highlighted word does not disappear in collab mode.
+        const pinned = pinnedSelectionRangeRef.current;
+        const paintFrom = from < to ? from : pinned && pinned.from < pinned.to ? pinned.from : from;
+        const paintTo = from < to ? to : pinned && pinned.from < pinned.to ? pinned.to : to;
+
+        if (paintFrom < paintTo) {
+          setSelectionRects(collectDomSelectionRects(paintFrom, paintTo));
+          setCaretPosition(null);
+        } else {
+          // Collapsed selection - show caret
           const domCaret = getCaretFromDom(from);
           if (domCaret) {
             setCaretPosition(domCaret);
           } else {
-            // Fallback to layout-based calculation if DOM not ready
             const overlay = pagesContainerRef.current?.parentElement?.querySelector(
               '[data-testid="selection-overlay"]'
             );
@@ -1455,113 +1480,21 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
             }
           }
           setSelectionRects([]);
-        } else {
-          // Range selection - show highlight rectangles using DOM-based approach
-          const overlay = pagesContainerRef.current?.parentElement?.querySelector(
-            '[data-testid="selection-overlay"]'
-          );
-
-          if (overlay && pagesContainerRef.current) {
-            const overlayRect = overlay.getBoundingClientRect();
-            const domRects: SelectionRect[] = [];
-
-            // Find spans that intersect with the selection range
-            const spans = pagesContainerRef.current.querySelectorAll(
-              'span[data-pm-start][data-pm-end]'
-            );
-
-            for (const span of Array.from(spans)) {
-              const spanEl = span as HTMLElement;
-              const pmStart = Number(spanEl.dataset.pmStart);
-              const pmEnd = Number(spanEl.dataset.pmEnd);
-
-              // Check if this span overlaps with selection
-              if (pmEnd > from && pmStart < to) {
-                // Special handling for tab spans - highlight the full visual width
-                if (spanEl.classList.contains('layout-run-tab')) {
-                  const spanRect = spanEl.getBoundingClientRect();
-                  const pageEl = spanEl.closest('.layout-page');
-                  const pageIndex = pageEl
-                    ? Number((pageEl as HTMLElement).dataset.pageNumber) - 1
-                    : 0;
-
-                  domRects.push({
-                    x: spanRect.left - overlayRect.left,
-                    y: spanRect.top - overlayRect.top,
-                    width: spanRect.width,
-                    height: spanRect.height,
-                    pageIndex,
-                  });
-                  continue;
-                }
-
-                if (span.firstChild?.nodeType !== Node.TEXT_NODE) continue;
-
-                const textNode = span.firstChild as Text;
-                const ownerDoc = spanEl.ownerDocument;
-                if (!ownerDoc) continue;
-
-                // Calculate the character range within this span
-                const startChar = Math.max(0, from - pmStart);
-                const endChar = Math.min(textNode.length, to - pmStart);
-
-                if (startChar < endChar) {
-                  const range = ownerDoc.createRange();
-                  range.setStart(textNode, startChar);
-                  range.setEnd(textNode, endChar);
-
-                  // Get all client rects for this range (handles line wraps)
-                  const clientRects = range.getClientRects();
-                  for (const rect of Array.from(clientRects)) {
-                    const pageEl = spanEl.closest('.layout-page');
-                    const pageIndex = pageEl
-                      ? Number((pageEl as HTMLElement).dataset.pageNumber) - 1
-                      : 0;
-
-                    domRects.push({
-                      x: rect.left - overlayRect.left,
-                      y: rect.top - overlayRect.top,
-                      width: rect.width,
-                      height: rect.height,
-                      pageIndex,
-                    });
-                  }
-                }
-              }
-            }
-
-            if (domRects.length > 0) {
-              setSelectionRects(domRects);
-            } else {
-              // Fallback to layout-based calculation
-              const firstPage = pagesContainerRef.current.querySelector('.layout-page');
-              if (firstPage) {
-                const pageRect = firstPage.getBoundingClientRect();
-                const pageOffsetX = pageRect.left - overlayRect.left;
-                const pageOffsetY = pageRect.top - overlayRect.top;
-
-                const rects = selectionToRects(layout, blocks, measures, from, to);
-                const adjustedRects = rects.map((rect) => ({
-                  ...rect,
-                  x: rect.x + pageOffsetX,
-                  y: rect.y + pageOffsetY,
-                }));
-                setSelectionRects(adjustedRects);
-              } else {
-                setSelectionRects([]);
-              }
-            }
-          } else {
-            setSelectionRects([]);
-          }
-          setCaretPosition(null);
         }
 
         // Refresh remote collaborator carets (positions may shift with doc edits)
         updateRemoteCarets();
       },
-      [layout, blocks, measures, getCaretFromDom, collaborationSession, updateRemoteCarets]
-      // NOTE: onSelectionChange removed from dependencies - accessed via ref to prevent infinite loops
+      [
+        layout,
+        blocks,
+        measures,
+        getCaretFromDom,
+        collectDomSelectionRects,
+        collaborationSession,
+        updateRemoteCarets,
+      ]
+      // NOTE: onSelectionChange / pinnedSelectionRange accessed via refs
     );
 
     // Subscribe to peer awareness (cursor moves) for remote initials on the overlay
@@ -1577,6 +1510,25 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
         collaborationSession.awareness.off('change', onAwareness);
       };
     }, [collaborationSession, updateRemoteCarets]);
+
+    // When a comment draft pins a range, paint that range once after commit
+    // without going through updateSelectionOverlay (which notifies the parent
+    // and previously nested setStates into an infinite loop).
+    const pinnedFrom = pinnedSelectionRange?.from ?? -1;
+    const pinnedTo = pinnedSelectionRange?.to ?? -1;
+    const collectDomSelectionRectsRef = useRef(collectDomSelectionRects);
+    collectDomSelectionRectsRef.current = collectDomSelectionRects;
+    useEffect(() => {
+      if (pinnedFrom < 0 || pinnedTo <= pinnedFrom) return;
+      const id = requestAnimationFrame(() => {
+        const rects = collectDomSelectionRectsRef.current(pinnedFrom, pinnedTo);
+        if (rects.length > 0) {
+          setSelectionRects(rects);
+          setCaretPosition(null);
+        }
+      });
+      return () => cancelAnimationFrame(id);
+    }, [pinnedFrom, pinnedTo]);
 
     // =========================================================================
     // Event Handlers
@@ -1599,6 +1551,13 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
           if (newDoc) {
             onDocumentChangeRef.current?.(newDoc);
           }
+        }
+
+        // y-prosemirror fires meta-only transactions on every awareness/cursor
+        // tick. Rebuilding selection rects on those resets the New Comment
+        // button's ready gate so it never appears in collab mode.
+        if (!transaction.docChanged && !transaction.selectionSet) {
+          return;
         }
 
         // Request selection update (will only execute when layout is current)
@@ -2186,43 +2145,75 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
           }
         }
 
-        // Double-click for word selection
+        // Double-click: select whole {template tag} if inside one, else select word
         if (e.detail === 2 && hiddenPMRef.current) {
           const pmPos = getPositionFromMouse(e.clientX, e.clientY);
           if (pmPos !== null) {
             const view = hiddenPMRef.current.getView();
             if (view) {
               const { doc } = view.state;
+
+              // Prefer selecting the entire Word content control (SDT / tag)
+              const sdtRange = findSdtContentRangeAt(doc, pmPos);
+              if (sdtRange && sdtRange.from < sdtRange.to) {
+                hiddenPMRef.current.setSelection(sdtRange.from, sdtRange.to);
+                return;
+              }
+
+              // Prefer selecting the entire docxtemplater tag chip
+              const tag = findTemplateTags(doc).find((t) => pmPos >= t.from && pmPos < t.to);
+              if (tag && tag.from < tag.to) {
+                hiddenPMRef.current.setSelection(tag.from, tag.to);
+                return;
+              }
+
               const $pos = doc.resolve(pmPos);
               const parent = $pos.parent;
 
-              // Find word boundaries
+              // Find word boundaries (Word-like: letters/digits/apostrophe/hyphen;
+              // punctuation like '.' is not part of the word. Template tags are
+              // handled above via findTemplateTags.)
               if (parent.isTextblock) {
-                const text = parent.textContent;
-                const offset = $pos.parentOffset;
+                const parentStart = $pos.start();
+                // Map textContent indices → doc positions so inline atoms
+                // (hard breaks, images) don't shift word offsets.
+                let text = '';
+                const docPosAt: number[] = [];
+                parent.forEach((child, childOffset) => {
+                  if (!child.isText || !child.text) return;
+                  for (let i = 0; i < child.text.length; i++) {
+                    docPosAt.push(parentStart + childOffset + i);
+                    text += child.text[i];
+                  }
+                });
 
-                // Unicode-aware word boundaries (letters/numbers — includes accented text)
-                const isWordChar = (ch: string | undefined) =>
-                  !!ch && /[\p{L}\p{N}\p{Pc}]/u.test(ch);
+                if (text.length === 0) return;
 
-                // Find word start (go back until non-word)
-                let start = offset;
-                while (start > 0 && isWordChar(text[start - 1])) {
-                  start--;
-                }
+                let textIndex = docPosAt.findIndex((p) => p >= pmPos);
+                if (textIndex < 0) textIndex = text.length - 1;
 
-                // Find word end (go forward until non-word)
-                let end = offset;
-                while (end < text.length && isWordChar(text[end])) {
+                const [start, wordEnd] = findWordBoundaries(text, textIndex);
+                let end = wordEnd;
+
+                // Word includes the trailing space after a word on double-click
+                if (
+                  end < text.length &&
+                  text[end] === ' ' &&
+                  end > start &&
+                  isWordCharacter(text[end - 1])
+                ) {
                   end++;
                 }
 
-                // Convert to absolute positions
-                const absStart = $pos.start() + start;
-                const absEnd = $pos.start() + end;
-
-                if (absStart < absEnd) {
-                  hiddenPMRef.current.setSelection(absStart, absEnd);
+                if (start < end && start < docPosAt.length) {
+                  const absStart = docPosAt[start];
+                  const absEnd =
+                    end <= docPosAt.length
+                      ? docPosAt[end - 1] + 1
+                      : docPosAt[docPosAt.length - 1] + 1;
+                  if (absStart < absEnd) {
+                    hiddenPMRef.current.setSelection(absStart, absEnd);
+                  }
                 }
               }
             }

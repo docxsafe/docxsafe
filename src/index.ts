@@ -1,5 +1,5 @@
 /**
- * decidendi-editor
+ * docxsafe-editor
  *
  * A complete WYSIWYG DOCX editor with full Microsoft Word fidelity.
  *
@@ -15,12 +15,12 @@
  * - Comments, tracked changes (suggestions), Word tags (content controls)
  * - Print / save as PDF
  * - AI-powered context menu
- * - Real-time collaboration (Yjs + y-webrtc) via `decidendi-editor/collaboration`
+ * - Real-time collaboration (Yjs + y-webrtc) via `docxsafe-editor/collaboration`
  *
  * CSS Styles:
  * For optimal cursor visibility and selection highlighting, import the editor styles:
  * ```
- * import 'decidendi-editor/styles/editor.css';
+ * import 'docxsafe-editor/styles/editor.css';
  * ```
  */
 
@@ -36,16 +36,21 @@ export const VERSION = '0.0.2';
 
 export { DocxEditor, type DocxEditorProps, type DocxEditorRef } from './components/DocxEditor';
 export { default } from './components/DocxEditor';
+export {
+  DocXSafeEditor,
+  type DocXSafeEditorProps,
+  type DocXSafeEditorRef,
+  type DocXSafeEditorHandle,
+  type DocXSafeEditorSource,
+  type DocXSafeCollaborationProps,
+} from './components/DocXSafeEditor';
 export { renderAsync, type RenderAsyncOptions, type DocxEditorHandle } from './renderAsync';
 
 // Review: editing modes, comments, suggestions (tracked changes), Word tags
 export type { EditorMode, MarkupView } from './components/review/types';
 export { Ribbon, type RibbonProps, type RibbonTabId } from './components/ribbon/Ribbon';
 export { StatusBar, type StatusBarProps } from './components/ribbon/StatusBar';
-export {
-  CommentBalloons,
-  type CommentBalloonsProps,
-} from './components/review/CommentBalloons';
+export { CommentBalloons, type CommentBalloonsProps } from './components/review/CommentBalloons';
 export { insertPageBreak as insertPageBreakCommand } from './prosemirror/commands/pageBreak';
 export {
   ReviewSidebar,

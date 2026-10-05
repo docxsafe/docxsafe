@@ -5,7 +5,7 @@
  *
  * @example
  * ```ts
- * import { createMcpServer, startStdioServer } from 'decidendi-editor/mcp';
+ * import { createMcpServer, startStdioServer } from 'docxsafe-editor/mcp';
  *
  * // Create server instance
  * const server = createMcpServer({ debug: true });

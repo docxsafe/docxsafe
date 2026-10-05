@@ -1,9 +1,12 @@
 /**
- * Collaboration module — real-time Word-style co-editing with Yjs + y-webrtc.
+ * Collaboration module — real-time Word-style co-editing with Yjs + WebSocket.
  *
- * Two (or more) users join the same `roomId` and share one document over a
- * peer-to-peer WebRTC mesh. Remote carets and selections appear in the editor;
- * undo/redo is shared via y-prosemirror.
+ * Two (or more) users join the same `roomId` via the collaboration server
+ * (`npm run collaboration:server`). Works across Chrome profiles and browsers.
+ * Remote carets and selections appear in the editor; undo/redo is shared via
+ * y-prosemirror.
+ *
+ * For the host-agnostic library API see `docxsafe-editor/collaborative-docs`.
  *
  * @packageDocumentation
  *
@@ -12,9 +15,9 @@
  * import {
  *   useCollaboration,
  *   CollaborationPresence,
- * } from 'decidendi-editor/collaboration';
- * import 'decidendi-editor/collaboration/styles.css';
- * import { DocxEditor } from 'decidendi-editor';
+ * } from 'docxsafe-editor/collaboration';
+ * import 'docxsafe-editor/collaboration/styles.css';
+ * import { DocxEditor } from 'docxsafe-editor';
  *
  * function App() {
  *   const collab = useCollaboration({
@@ -88,6 +91,17 @@ export {
   publishLocalCursor,
 } from './remoteCursors';
 export type { RemoteCursorOverlay } from './remoteCursors';
+export {
+  COMMENTS_MAP_FIELD,
+  getCommentsMap,
+  readSharedComments,
+  upsertSharedComment,
+  removeSharedComment,
+  seedSharedCommentsIfEmpty,
+  observeSharedComments,
+  allocateCommentId,
+} from './commentsSync';
+export type { SharedCommentRecord } from './commentsSync';
 
 /** Config accepted by DocxEditor's `collaboration` prop */
 export interface DocxCollaborationConfig {

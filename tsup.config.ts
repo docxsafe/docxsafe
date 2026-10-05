@@ -11,6 +11,8 @@ export default defineConfig([
       'core-plugins': 'src/core-plugins/index.ts',
       mcp: 'src/mcp/index.ts',
       collaboration: 'src/collaboration/index.ts',
+      'collaborative-docs': 'src/collaborative-docs/index.ts',
+      'collaborative-docs-server': 'src/collaborative-docs/server/index.ts',
     },
     format: ['cjs', 'esm'],
     dts: true,
@@ -25,9 +27,12 @@ export default defineConfig([
       // Keep Yjs stack external so consumers can dedupe versions
       'yjs',
       'y-webrtc',
+      'y-websocket',
       'y-prosemirror',
       'y-protocols',
       'lib0',
+      'ws',
+      '@aws-sdk/client-s3',
     ],
     injectStyle: false,
   },
@@ -35,6 +40,7 @@ export default defineConfig([
   {
     entry: {
       'mcp-cli': 'src/mcp/cli.ts',
+      'collab-server-cli': 'src/collaborative-docs/server/cli.ts',
     },
     format: ['esm'],
     dts: true,

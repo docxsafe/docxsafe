@@ -6,8 +6,8 @@
  *
  * @example
  * ```ts
- * import { createMcpServer, startStdioServer } from 'decidendi-editor/mcp';
- * import { pluginRegistry, docxtemplaterPlugin } from 'decidendi-editor/core-plugins';
+ * import { createMcpServer, startStdioServer } from 'docxsafe-editor/mcp';
+ * import { pluginRegistry, docxtemplaterPlugin } from 'docxsafe-editor/core-plugins';
  *
  * // Register plugins
  * pluginRegistry.register(docxtemplaterPlugin);

@@ -3,7 +3,7 @@
  *
  * Usage:
  * ```ts
- * import { renderAsync } from 'decidendi-editor';
+ * import { renderAsync } from 'docxsafe-editor';
  *
  * const editor = await renderAsync(docxBlob, document.getElementById('container'), {
  *   readOnly: false,

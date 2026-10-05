@@ -25,18 +25,19 @@ export interface UseCollaborationResult {
 }
 
 /**
- * Join a WebRTC collaboration room for the lifetime of the component.
+ * Join a WebSocket collaboration room for the lifetime of the component.
  *
  * Pass `null` options to disable collaboration (returns empty plugins).
  *
- * Room identity is `roomId` + `password` only — changing the display name
- * updates awareness via `setUser` without tearing down the WebRTC session.
+ * Room identity is `roomId` + `websocketUrl` — changing the display name
+ * updates awareness via `setUser` without tearing down the session.
  *
  * @example
  * ```tsx
  * const collab = useCollaboration({
  *   roomId: 'acme-msa',
  *   user: { name: 'Alice', color: '#185abd' },
+ *   websocketUrl: 'ws://localhost:1234',
  * });
  *
  * <DocxEditor
@@ -51,9 +52,11 @@ export function useCollaboration(
   const [peers, setPeers] = useState<CollaborationAwarenessUser[]>([]);
   const [connected, setConnected] = useState(false);
 
-  // Recreate only when the room / password changes — not on every name keystroke
+  // Recreate only when the room / server changes.
+  // Do NOT include token or display name — typing a name must not tear down the
+  // WebSocket session (that kills live editing mid-keystroke).
   const roomKey = options
-    ? `${options.roomId.trim()}::${options.password ?? ''}::${(options.signaling ?? []).join(',')}`
+    ? `${options.roomId.trim()}::${options.websocketUrl ?? ''}::${options.user.id ?? ''}`
     : '';
 
   useEffect(() => {
@@ -91,10 +94,7 @@ export function useCollaboration(
     });
   }, [session, options?.user.name, options?.user.color, options?.user.id]);
 
-  const plugins = useMemo(
-    () => (session ? createCollaborationPlugins(session) : []),
-    [session]
-  );
+  const plugins = useMemo(() => (session ? createCollaborationPlugins(session) : []), [session]);
 
   return { session, plugins, peers, connected };
 }

@@ -4,7 +4,7 @@
  * renders the Ribbon, CommentBalloons and ReviewSidebar from the returned state.
  */
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Node as PMNode } from 'prosemirror-model';
 import type { EditorView } from 'prosemirror-view';
 import type { Comment, Document } from '../../types/document';
@@ -36,6 +36,16 @@ import {
   type RevisionInfo,
 } from '../../prosemirror/commands/review';
 import { commentParagraphsFromText } from '../../docx/serializer/commentSerializer';
+import type { CollaborationSession } from '../../collaboration/types';
+import { initialsForName } from '../../collaboration/remoteCursors';
+import {
+  allocateCommentId,
+  observeSharedComments,
+  readSharedComments,
+  removeSharedComment,
+  seedSharedCommentsIfEmpty,
+  upsertSharedComment,
+} from '../../collaboration/commentsSync';
 import type { EditorMode, MarkupView } from './types';
 import type { CommentDraft, ReviewTab } from './ReviewSidebar';
 
@@ -49,6 +59,11 @@ export interface UseReviewOptions {
   onModeChange?: (mode: EditorMode) => void;
   /** Open the sidebar initially */
   defaultSidebarOpen: boolean;
+  /**
+   * When set, comment metadata (body, author, replies) syncs over the shared
+   * Y.Doc so peers see balloons — not just the highlight marks.
+   */
+  collaborationSession?: CollaborationSession | null;
 }
 
 function commentDate(): string {
@@ -62,6 +77,7 @@ export function useReview({
   defaultMode,
   onModeChange,
   defaultSidebarOpen,
+  collaborationSession = null,
 }: UseReviewOptions) {
   const [uncontrolledMode, setUncontrolledMode] = useState<EditorMode>(defaultMode);
   const mode = controlledMode ?? uncontrolledMode;
@@ -91,6 +107,27 @@ export function useReview({
   const getViewRef = useRef(getViewOption);
   getViewRef.current = getViewOption;
   const getView = useCallback(() => getViewRef.current(), []);
+
+  // Keep a live comments snapshot for seeding / id allocation without stale closures
+  const commentsRef = useRef(comments);
+  commentsRef.current = comments;
+
+  // Sync comment metadata over Yjs when collaborating (full OOXML Comment shape)
+  useEffect(() => {
+    if (!collaborationSession) return;
+    const { doc } = collaborationSession;
+    // First peer with local comments seeds the shared map (preserves DOCX paragraphs)
+    seedSharedCommentsIfEmpty(doc, commentsRef.current);
+    const stop = observeSharedComments(doc, (shared) => {
+      setComments(shared);
+      if (shared.length > 0) {
+        hadCommentsRef.current = true;
+        setShowComments(true);
+        setMarkupView((v) => (v === 'none' || v === 'original' ? 'all' : v));
+      }
+    });
+    return stop;
+  }, [collaborationSession]);
 
   // Refs read by the ProseMirror plugin (created once)
   const modeRef = useRef(mode);
@@ -123,13 +160,21 @@ export function useReview({
   // --------------------------------------------------------------------------
 
   /** Load comments from a freshly parsed document */
-  const loadComments = useCallback((doc: Document | null) => {
-    const loaded = doc?.package.document.comments ?? [];
-    hadCommentsRef.current = !!doc?.package.document.comments;
-    setComments(loaded);
-    setActiveCommentId(null);
-    setDraft(null);
-  }, []);
+  const loadComments = useCallback(
+    (doc: Document | null) => {
+      const loaded = doc?.package.document.comments ?? [];
+      hadCommentsRef.current = !!doc?.package.document.comments;
+      if (collaborationSession) {
+        seedSharedCommentsIfEmpty(collaborationSession.doc, loaded);
+        setComments(readSharedComments(collaborationSession.doc));
+      } else {
+        setComments(loaded);
+      }
+      setActiveCommentId(null);
+      setDraft(null);
+    },
+    [collaborationSession]
+  );
 
   /** Called on every editor transaction/selection change */
   const syncFromView = useCallback((view: EditorView | null) => {
@@ -184,7 +229,7 @@ export function useReview({
     return comments.filter((c) => anchored.has(c.parentId ?? c.id));
   }, [comments, anchors]);
 
-  /** Merge current comments into a document before saving */
+  /** Merge current comments into a document before saving (word/comments.xml). */
   const withComments = useCallback(
     (doc: Document): Document => {
       if (liveComments.length === 0 && !hadCommentsRef.current) return doc;
@@ -192,7 +237,11 @@ export function useReview({
         ...doc,
         package: {
           ...doc.package,
-          document: { ...doc.package.document, comments: liveComments },
+          document: {
+            ...doc.package.document,
+            // Full OOXML Comment[] → serializeComments / commentsExtended on save
+            comments: liveComments,
+          },
         },
       };
     },
@@ -241,45 +290,87 @@ export function useReview({
     [getView, mode]
   );
 
-  const nextCommentId = useCallback(
-    () => comments.reduce((max, c) => Math.max(max, c.id), -1) + 1,
-    [comments]
-  );
+  const nextCommentId = useCallback(() => {
+    if (collaborationSession) {
+      return allocateCommentId(collaborationSession.doc, commentsRef.current);
+    }
+    return comments.reduce((max, c) => Math.max(max, c.id), -1) + 1;
+  }, [comments, collaborationSession]);
 
   const submitDraft = useCallback(
     (text: string) => {
       const view = getView();
       if (!view || !draft) return;
       const id = nextCommentId();
-      if (!addCommentMark(view, id, draft)) return;
-      setComments((prev) => [
-        ...prev,
-        { id, author, date: commentDate(), content: commentParagraphsFromText(text) },
-      ]);
+      const range = { from: draft.from, to: draft.to };
+      if (!addCommentMark(view, id, range)) return;
+      // OOXML w:comment body as paragraphs (same shape as comments.xml)
+      const comment: Comment = {
+        id,
+        author,
+        initials: initialsForName(author),
+        date: commentDate(),
+        content: commentParagraphsFromText(text),
+      };
+      if (collaborationSession) {
+        upsertSharedComment(collaborationSession.doc, comment);
+      } else {
+        setComments((prev) => [...prev, comment]);
+      }
+      hadCommentsRef.current = true;
       setActiveCommentId(id);
       setDraft(null);
+      // Keep the commented range selected so the highlight does not disappear
+      // when the composer closes (especially noticeable in collab mode).
+      try {
+        view.dispatch(
+          view.state.tr.setSelection(TextSelection.create(view.state.doc, range.from, range.to))
+        );
+      } catch {
+        // Positions may be stale after a concurrent collab edit
+      }
     },
-    [getView, draft, nextCommentId, author]
+    [getView, draft, nextCommentId, author, collaborationSession]
   );
 
   const reply = useCallback(
     (parentId: number, text: string) => {
       const id = nextCommentId();
-      setComments((prev) => [
-        ...prev,
-        { id, parentId, author, date: commentDate(), content: commentParagraphsFromText(text) },
-      ]);
+      const comment: Comment = {
+        id,
+        parentId,
+        author,
+        initials: initialsForName(author),
+        date: commentDate(),
+        content: commentParagraphsFromText(text),
+      };
+      if (collaborationSession) {
+        upsertSharedComment(collaborationSession.doc, comment);
+      } else {
+        setComments((prev) => [...prev, comment]);
+      }
+      hadCommentsRef.current = true;
     },
-    [nextCommentId, author]
+    [nextCommentId, author, collaborationSession]
   );
 
-  const resolve = useCallback((commentId: number, done: boolean) => {
-    setComments((prev) => prev.map((c) => (c.id === commentId ? { ...c, done } : c)));
-  }, []);
+  const resolve = useCallback(
+    (commentId: number, done: boolean) => {
+      if (collaborationSession) {
+        const existing = commentsRef.current.find((c) => c.id === commentId);
+        if (existing) {
+          upsertSharedComment(collaborationSession.doc, { ...existing, done });
+        }
+        return;
+      }
+      setComments((prev) => prev.map((c) => (c.id === commentId ? { ...c, done } : c)));
+    },
+    [collaborationSession]
+  );
 
   const deleteComment = useCallback(
     (commentId: number) => {
-      const target = comments.find((c) => c.id === commentId);
+      const target = commentsRef.current.find((c) => c.id === commentId);
       if (!target) return;
       if (target.parentId == null) {
         // Only remove the anchor: the thread drops out of liveComments (and the
@@ -287,11 +378,14 @@ export function useReview({
         const view = getView();
         if (view) removeCommentMark(view, commentId);
         if (activeCommentId === commentId) setActiveCommentId(null);
+        // Keep shared metadata so undo/restore still has the body for peers
+      } else if (collaborationSession) {
+        removeSharedComment(collaborationSession.doc, commentId);
       } else {
         setComments((prev) => prev.filter((c) => c.id !== commentId));
       }
     },
-    [comments, getView, activeCommentId]
+    [getView, activeCommentId, collaborationSession]
   );
 
   const goToComment = useCallback(
